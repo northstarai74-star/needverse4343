@@ -62,6 +62,7 @@ input.bad{border-color:var(--err)}
 .btn.ghost{background:transparent;border:1px solid var(--line)}
 .btn.ghost:hover{border-color:var(--text);background:transparent}
 .btn.block{width:100%;font-size:1.05rem}
+.payerr{margin-top:16px;background:rgba(255,93,93,.1);border:1px solid var(--err);color:#ffb3b3;border-radius:10px;padding:12px 14px;font-size:.9rem}
 .spin{width:16px;height:16px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite}
 @keyframes sp{to{rotate:360deg}}
 
@@ -158,6 +159,7 @@ input.bad{border-color:var(--err)}
           <h2><span class="n">3</span>Payment</h2>
           <p class="muted small" style="margin:0">You'll pick how to pay in the Razorpay window. Card details never touch our servers.</p>
           <div class="methods"><span>UPI</span><span>Cards</span><span>Netbanking</span><span>Wallets</span></div>
+          <div class="payerr" id="payErr" role="alert" hidden></div>
           <button class="btn block" id="payBtn" style="margin-top:22px">Pay securely · <span id="payTotal"></span></button>
         </section>
       </form>
@@ -181,7 +183,6 @@ input.bad{border-color:var(--err)}
 
 <div id="toast" class="toast" role="status"></div>
 
-<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 <script src="catalog.js"></script>
 <script>
 const $=id=>document.getElementById(id);
@@ -245,6 +246,18 @@ for(const k in rules)form.elements[k].addEventListener("input",()=>{if(form.elem
 {const s=store.get("contact",{});for(const k in s)if(form.elements[k]&&typeof s[k]==="string")form.elements[k].value=s[k]}
 
 /* ----- pay ----- */
+// Loads Razorpay's checkout script when needed (and retries), so one failed page-load fetch can't block payment.
+function loadRazorpay(){
+  if(window.Razorpay)return Promise.resolve();
+  return new Promise((ok,fail)=>{
+    const tryLoad=n=>{
+      const el=document.createElement("script");el.src="https://checkout.razorpay.com/v1/checkout.js";
+      el.onload=()=>window.Razorpay?ok():fail(new Error("Razorpay did not start."));
+      el.onerror=()=>{el.remove();n>0?setTimeout(()=>tryLoad(n-1),600):fail(new Error("Could not load the Razorpay payment window. Check your connection or disable ad/script blockers, then try again."))};
+      document.head.appendChild(el)};
+    tryLoad(2)})}
+loadRazorpay().catch(()=>{}); // warm up so the window opens instantly on click
+const showErr=m=>{const b=$("payErr");b.textContent=m||"";b.hidden=!m;if(m)b.scrollIntoView({block:"nearest",behavior:"smooth"})};
 const btn=$("payBtn"),btnHtml=btn.innerHTML;
 const busy=on=>{btn.disabled=on;btn.innerHTML=on?'<span class="spin"></span> Processing…':btnHtml;if(!on)$("payTotal").textContent=money(totals().total)};
 form.onsubmit=async e=>{e.preventDefault();
@@ -252,16 +265,16 @@ form.onsubmit=async e=>{e.preventDefault();
   if(bad.length){form.elements[bad[0]].focus();return toast("Please fix the highlighted fields")}
   const f=Object.fromEntries(Object.keys(rules).map(k=>[k,form.elements[k].value.trim()]));
   store.set("contact",f);
-  busy(true);
+  busy(true);showErr("");
   try{
-    if(typeof Razorpay==="undefined")throw new Error("Payment script failed to load. Check your internet connection.");
+    await loadRazorpay();
     const r=await fetch("/api/create-order",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({cart,promo,customer:f,vehicle})});
     const o=await r.json().catch(()=>({}));
-    if(!r.ok)throw new Error(o.error||"Could not start payment. Please try again.");
+    if(!r.ok)throw new Error(o.error||`Could not start payment (server error ${r.status}). Open /api/health on your site to see what is misconfigured.`);
     const paidCart=cart;
     const rz=new Razorpay({key:o.key,amount:o.amount,currency:o.currency,name:"Needverse",description:"Order "+o.ref,order_id:o.orderId,
       prefill:{name:f.name,email:f.email,contact:f.phone},theme:{color:"#ff4d1a"},
-      modal:{ondismiss:()=>busy(false)},
+      modal:{ondismiss:()=>{busy(false);showErr("Payment window closed. Your cart is saved. Press Pay to try again.")}},
       handler:async resp=>{
         try{
           const v=await fetch("/api/verify-payment",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(resp)});
@@ -273,10 +286,10 @@ form.onsubmit=async e=>{e.preventDefault();
           $("page").hidden=true;$("done").hidden=false;scrollTo(0,0);
         }catch(err){
           busy(false);
-          toast(`${err.message} If you were charged, contact us with payment id ${resp.razorpay_payment_id}.`)}}});
-    rz.on("payment.failed",x=>{toast(x.error?.description||"Payment failed. Please try again.");busy(false)});
+          showErr(`${err.message} If you were charged, contact us with payment id ${resp.razorpay_payment_id}.`)}}});
+    rz.on("payment.failed",x=>{busy(false);showErr(x.error?.description||"Payment failed. Please try again.")});
     rz.open();
-  }catch(err){toast(err.message);busy(false)}};
+  }catch(err){busy(false);showErr(err.message)}};
 
 if(Object.keys(cart).length){$("page").hidden=false;renderSummary()}else $("empty").hidden=false;
 </script>
