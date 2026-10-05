@@ -109,6 +109,7 @@ app.use(express.json({ limit: "50kb" }));
 app.use(express.static(path.join(__dirname, "public")));
 // Explicit route so "/" works on Vercel, where express.static is skipped in favour of its CDN.
 app.get("/", (req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
+app.get("/checkout", (req, res) => res.sendFile(path.join(__dirname, "public", "checkout.html")));
 
 // Validate the cart coming from the browser; prices are never taken from the client.
 function cleanCart(input) {
