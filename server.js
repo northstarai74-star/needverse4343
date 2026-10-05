@@ -274,10 +274,30 @@ app.get("/api/admin/orders.csv", adminAuth, wrap(async (req, res) => {
   res.type("text/csv").attachment("orders.csv").send(rows.map((r) => r.map(q).join(",")).join("\n"));
 }));
 
+// Turns a bare "fetch failed" into the network reason, without echoing the URL itself.
+async function whyUnreachable(url) {
+  const raw = String(url || "");
+  if (raw !== raw.trim() || /["']/.test(raw)) return "SUPABASE_URL has spaces or quotes around it. Paste only https://<project-id>.supabase.co";
+  let u;
+  try { u = new URL(raw); } catch { return "SUPABASE_URL is not a valid URL. It should look like https://<project-id>.supabase.co"; }
+  if (u.protocol !== "https:" || !/^[a-z0-9]{20}\.supabase\.co$/.test(u.hostname) || u.pathname.length > 1)
+    return "SUPABASE_URL has the wrong shape. It should be exactly https://<project-id>.supabase.co (no path, no trailing /rest/v1)";
+  try {
+    const r = await fetch(u.origin + "/rest/v1/", { signal: AbortSignal.timeout(8000) });
+    return `Supabase answered with HTTP ${r.status} but the client still failed. Check the project is not paused.`;
+  } catch (err) {
+    const code = err.cause?.code || err.name;
+    if (code === "ENOTFOUND") return "Cannot find that Supabase project (ENOTFOUND). The project id in SUPABASE_URL is wrong or the project was deleted.";
+    if (code === "TimeoutError" || code === "UND_ERR_CONNECT_TIMEOUT") return "Supabase did not respond (timeout). The project may be paused: open it in the Supabase dashboard and click Restore.";
+    return `Cannot reach Supabase (${code}).`;
+  }
+}
+
 // Setup check for the owner: open /api/health after a deploy. Reports what is configured, never the values.
 app.get("/api/health", wrap(async (req, res) => {
   let database = "ok";
   try { await db.check(); } catch (err) { database = err.message; }
+  if (/fetch failed/i.test(database)) database = await whyUnreachable(process.env.SUPABASE_URL);
   const ok = database === "ok" && paymentsReady;
   res.set("Cache-Control", "no-store").status(ok ? 200 : 503).json({
     ok,

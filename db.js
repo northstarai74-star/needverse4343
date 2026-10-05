@@ -4,7 +4,10 @@ const { createClient } = require("@supabase/supabase-js");
 
 const { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } = process.env;
 const configured = Boolean(SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY);
-const sb = configured ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } }) : null;
+// A malformed URL makes createClient throw; catch it so the server still boots and check() reports it.
+let sb = null, initError = null;
+try { sb = configured ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } }) : null; }
+catch (err) { initError = err; }
 
 const T = "orders";
 const fail = (what, error) => { throw new Error(`Database error (${what}): ${error.message || error}`); };
@@ -34,6 +37,7 @@ function toRow(o) {
 // Throws a readable error if the connection or the table isn't ready.
 async function check() {
   if (!configured) throw new Error("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are not set.");
+  if (initError) throw new Error(`SUPABASE_URL is invalid (${initError.message}). It should be exactly https://<project-id>.supabase.co`);
   const { error } = await sb.from(T).select("order_id").limit(1);
   if (error) throw new Error(/relation .* does not exist|schema cache|Could not find the table/i.test(error.message)
     ? "The 'orders' table doesn't exist yet. Run schema.sql in the Supabase SQL Editor."
