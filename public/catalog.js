@@ -1,6 +1,8 @@
 /* Catalog: edit this file to manage products. Prices are in rupees (INR).
    Shared by the browser and the server; the server re-prices every order from this file. */
-const STORE={currency:"INR",symbol:"₹",freeShip:999,shipFee:99,promos:{SAVE10:.1,WELCOME5:.05}};
+/* demoPayments: true  = checkout uses the simulated payment window (no Razorpay, nothing charged, no order saved).
+                  false = real Razorpay payments. Set to false before you go live. (?demo=1 / ?demo=0 on the URL overrides it for a tab.) */
+const STORE={currency:"INR",symbol:"₹",freeShip:999,shipFee:99,demoPayments:true,promos:{SAVE10:.1,WELCOME5:.05}};
 const VEHICLES = {
   Toyota:{Camry:[2018,2024],Corolla:[2016,2024],RAV4:[2016,2024],Hilux:[2016,2024]},
   Honda:{Civic:[2016,2024],Accord:[2016,2024],"CR-V":[2016,2024]},

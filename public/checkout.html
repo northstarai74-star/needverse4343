@@ -236,9 +236,9 @@ dialog::backdrop{background:rgba(0,0,0,.72);backdrop-filter:blur(4px)}
 const $=id=>document.getElementById(id);
 const money=n=>STORE.symbol+n.toLocaleString("en-IN",{minimumFractionDigits:n%1?2:0,maximumFractionDigits:2});
 const store={get(k,d){try{return JSON.parse(localStorage.getItem(k))??d}catch{return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch{}}};
-// Demo mode (?demo=1) swaps Razorpay for a simulated payment window. It is remembered for the tab, never saves orders, and never charges anything.
-let DEMO=false;
-try{const q=new URLSearchParams(location.search).get("demo");if(q==="1")sessionStorage.setItem("demo","1");if(q==="0")sessionStorage.removeItem("demo");DEMO=sessionStorage.getItem("demo")==="1"}catch{DEMO=new URLSearchParams(location.search).get("demo")==="1"}
+// Demo mode (STORE.demoPayments in catalog.js, or ?demo=1 / ?demo=0 per tab) swaps Razorpay for a simulated payment window. It never saves orders and never charges anything.
+let DEMO=!!STORE.demoPayments;
+try{const q=new URLSearchParams(location.search).get("demo");if(q==="1"||q==="0")sessionStorage.setItem("demo",q);const v=sessionStorage.getItem("demo");if(v)DEMO=v==="1"}catch{const q=new URLSearchParams(location.search).get("demo");if(q)DEMO=q==="1"}
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
 // Drop anything in the saved cart that is no longer in the catalog, so a stale cart can't break the page.
