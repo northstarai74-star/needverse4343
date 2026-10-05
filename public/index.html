@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Nnedverse | Car Accessories That Fit</title>
+<title>Needverse | Car Accessories That Fit</title>
 <meta name="description" content="Car accessories that fit your vehicle. Pick your car once, see only what fits, check out in seconds.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -16,7 +16,8 @@
   --r:16px;
 }
 *{box-sizing:border-box}
-html{scroll-behavior:smooth}
+[hidden]{display:none!important}
+html{scroll-behavior:smooth;scroll-padding-top:88px}
 html,body{overflow-x:clip}
 .hero .wrap>*,.search{min-width:0}
 body{margin:0;background:var(--bg);color:var(--text);font:400 16px/1.55 var(--body);-webkit-font-smoothing:antialiased}
@@ -29,7 +30,8 @@ h1,h2,h3{font-family:var(--disp);text-transform:uppercase;letter-spacing:.01em;m
 h2{font-size:clamp(2rem,4vw,3rem)}
 
 /* announcement + nav */
-.announce{background:var(--accent);color:#fff;text-align:center;font-size:.8rem;font-weight:600;letter-spacing:.04em;padding:8px 12px}
+.announce{background:var(--accent);color:#fff;text-align:center;font-size:.8rem;font-weight:600;letter-spacing:.04em;padding:8px 12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.announce i{font-style:normal;opacity:.7;margin:0 10px}
 .nav{position:sticky;top:0;z-index:30;background:rgba(10,11,13,.85);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
 .nav .wrap{display:flex;align-items:center;gap:28px;height:72px}
 .logo{font:800 1.9rem/1 var(--disp);text-transform:uppercase;letter-spacing:.02em;display:flex;align-items:center;gap:8px}
@@ -80,7 +82,7 @@ h2{font-size:clamp(2rem,4vw,3rem)}
 .trust{border-block:1px solid var(--line);background:var(--bg2)}
 .trust .wrap{display:grid;grid-template-columns:repeat(4,1fr);gap:24px;padding-block:26px}
 .trust div{display:flex;gap:14px;align-items:center}
-.trust .ic{flex:none;width:46px;height:46px;border-radius:12px;background:var(--panel2);display:grid;place-items:center;font-size:1.3rem}
+.trust .ic{flex:none;width:46px;height:46px;border-radius:12px;background:rgba(255,77,26,.12);border:1px solid rgba(255,77,26,.25);color:var(--accent);display:grid;place-items:center}
 .trust b{display:block;font-size:.95rem}.trust span{font-size:.82rem;color:var(--muted)}
 
 /* sections */
@@ -103,13 +105,16 @@ section.s{padding:84px 0 0}
 .kits{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
 .kit{position:relative;overflow:hidden;background:linear-gradient(150deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:20px;padding:28px;display:flex;flex-direction:column;gap:10px;transition:.25s}
 .kit:hover{border-color:var(--accent);transform:translateY(-4px)}
-.kit .big{position:absolute;right:-10px;top:-10px;font-size:7rem;opacity:.16;rotate:-12deg}
-.kit .tag{align-self:flex-start;background:rgba(61,220,132,.14);color:var(--ok);font-size:.75rem;font-weight:700;padding:4px 10px;border-radius:999px}
+.kit .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.kit .big{flex:none;width:64px;height:64px;border-radius:16px;background:var(--bg2);border:1px solid var(--line);display:grid;place-items:center;font-size:2.2rem;rotate:-6deg;transition:.25s}
+.kit:hover .big{rotate:0deg;scale:1.06}
+.kit .tag{background:rgba(61,220,132,.14);color:var(--ok);font-size:.75rem;font-weight:700;padding:4px 10px;border-radius:999px}
 .kit h3{font-size:2rem}
 .kit p{margin:0;color:var(--muted);font-size:.92rem;flex:1}
 .kit .row{display:flex;align-items:baseline;gap:10px}
 .kit .row b{font:800 2rem/1 var(--disp)}
 .kit s{color:var(--muted)}
+.kit .btn{margin-top:8px}
 
 /* products */
 .toolbar{display:flex;gap:14px;justify-content:space-between;align-items:center;flex-wrap:wrap;margin-bottom:24px}
@@ -117,7 +122,8 @@ section.s{padding:84px 0 0}
 .chip{background:transparent;border:1px solid var(--line);border-radius:999px;padding:8px 16px;cursor:pointer;font-size:.88rem;font-weight:500;transition:.2s}
 .chip:hover{border-color:var(--text)}
 .chip.on{background:var(--text);color:#111;border-color:var(--text)}
-.toolbar select{appearance:none;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:9px 18px;cursor:pointer;outline:0}
+.toolbar select{appearance:none;background:var(--panel) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none' stroke='%238e97a6' stroke-width='2'%3E%3Cpath d='m1 1 5 5 5-5'/%3E%3C/svg%3E") no-repeat right 16px center;border:1px solid var(--line);border-radius:999px;padding:9px 40px 9px 18px;cursor:pointer;outline:0}
+.toolbar select:focus{border-color:var(--accent)}
 .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;display:flex;flex-direction:column;transition:.25s}
 .card:hover{transform:translateY(-6px);border-color:#3a414e;box-shadow:0 24px 50px rgba(0,0,0,.5)}
@@ -205,17 +211,22 @@ dialog input:focus{border-color:var(--accent)}
 
 /* responsive */
 @media (max-width:1050px){.grid{grid-template-columns:repeat(3,1fr)}.cats{grid-template-columns:repeat(3,1fr)}.hero .wrap{grid-template-columns:1fr}.trust .wrap{grid-template-columns:1fr 1fr}.links{display:none}.fgrid{grid-template-columns:1fr 1fr}}
-@media (max-width:720px){.wrap{padding:0 16px}.grid{grid-template-columns:repeat(2,1fr);gap:12px}.kits{grid-template-columns:1fr}.cats{grid-template-columns:repeat(2,1fr)}.nav .wrap{gap:12px;height:64px}.logo span{display:none}.search{max-width:none}.hero{padding:44px 0 56px}.pic span{font-size:3.4rem}.info{padding:12px}.price{font-size:1.4rem}.add{padding:8px 12px}.buy{flex-wrap:wrap;gap:8px}.fgrid{grid-template-columns:1fr}.trust .wrap{grid-template-columns:1fr}.reorder{padding:26px}section.s{padding-top:60px}}
+@media (max-width:720px){.wrap{padding:0 16px}.grid{grid-template-columns:repeat(2,1fr);gap:12px}.kits{grid-template-columns:1fr}.cats{grid-template-columns:repeat(2,1fr)}
+  html{scroll-padding-top:128px}.announce .opt{display:none}
+  .nav .wrap{flex-wrap:wrap;gap:10px 12px;height:auto;padding-block:10px}.nav .logo{font-size:1.6rem}.cartbtn{margin-left:auto;padding:9px 16px}.search{order:3;flex-basis:100%;max-width:none}.search input{padding-block:10px}
+  .hero{padding:40px 0 52px}.hero h1{margin:14px 0 16px}.hero p.lead{font-size:1.05rem;margin-bottom:24px}
+  .stats{display:grid;grid-template-columns:repeat(3,auto);justify-content:start;gap:24px}.stats div b{font-size:1.8rem}.stats div span{font-size:.75rem}
+  .finder{padding:22px}.head{margin-bottom:24px}.pic span{font-size:3.4rem}.info{padding:12px}.price{font-size:1.4rem}.add{padding:8px 12px}.buy{flex-wrap:wrap;gap:8px}.fgrid{grid-template-columns:1fr}.trust .wrap{grid-template-columns:1fr}.reorder{padding:26px}section.s{padding-top:60px}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
 <body>
 
-<div class="announce">FREE SHIPPING OVER ₹999 &nbsp;·&nbsp; SAME-DAY DISPATCH BEFORE 2 PM &nbsp;·&nbsp; 30-DAY RETURNS</div>
+<div class="announce">FREE SHIPPING OVER ₹999<span class="opt"><i>·</i>SAME-DAY DISPATCH BEFORE 2 PM</span><i>·</i>30-DAY RETURNS</div>
 
 <nav class="nav">
   <div class="wrap">
-    <a class="logo" href="#"><i>N</i><span>Nnedverse</span></a>
+    <a class="logo" href="#"><i>N</i><span>Needverse</span></a>
     <div class="links"><a href="#shop">Shop</a><a href="#kits">Kits</a><a href="#cats">Categories</a><a href="#help">Help</a></div>
     <label class="search">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
@@ -254,10 +265,10 @@ dialog input:focus{border-color:var(--accent)}
 </header>
 
 <div class="trust"><div class="wrap">
-  <div><span class="ic">✔️</span><p style="margin:0"><b>Guaranteed fit</b><span>Or we pay return shipping</span></p></div>
-  <div><span class="ic">🚚</span><p style="margin:0"><b>Fast delivery</b><span>Same-day dispatch before 2 PM</span></p></div>
-  <div><span class="ic">↩️</span><p style="margin:0"><b>30-day returns</b><span>No questions asked</span></p></div>
-  <div><span class="ic">💬</span><p style="margin:0"><b>Real support</b><span>Answers in under an hour</span></p></div>
+  <div><span class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v6c0 4.5 3.4 8.3 8 9 4.6-.7 8-4.5 8-9V6z"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg></span><p style="margin:0"><b>Guaranteed fit</b><span>Or we pay return shipping</span></p></div>
+  <div><span class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h11v10H3zM14 9h4l3 3v4h-7"/><circle cx="7" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/></svg></span><p style="margin:0"><b>Fast delivery</b><span>Same-day dispatch before 2 PM</span></p></div>
+  <div><span class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h11a5 5 0 0 1 0 10H8"/><path d="m8 5-4 4 4 4"/></svg></span><p style="margin:0"><b>30-day returns</b><span>No questions asked</span></p></div>
+  <div><span class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/><path d="M8.5 11h.01M12 11h.01M15.5 11h.01"/></svg></span><p style="margin:0"><b>Real support</b><span>Answers in under an hour</span></p></div>
 </div></div>
 
 <main class="wrap">
@@ -290,13 +301,13 @@ dialog input:focus{border-color:var(--accent)}
 
 <footer id="help"><div class="wrap">
   <div class="fgrid">
-    <div><a class="logo" href="#"><i>N</i><span>Nnedverse</span></a><p class="muted small" style="max-width:300px;margin-top:14px">Car accessories that fit your vehicle, picked once and shipped fast.</p></div>
+    <div><a class="logo" href="#"><i>N</i><span>Needverse</span></a><p class="muted small" style="max-width:300px;margin-top:14px">Car accessories that fit your vehicle, picked once and shipped fast.</p></div>
     <div><h4>Shop</h4><ul><li><a href="#cats">Categories</a></li><li><a href="#kits">Kits</a></li><li><a href="#shop">All products</a></li></ul></div>
     <div><h4>Help</h4><ul><li><a href="#">Shipping</a></li><li><a href="#">Returns</a></li><li><a href="#">Contact</a></li></ul></div>
     <div><h4>Get 5% off</h4><p class="muted small" style="margin:0">Use code <b style="color:var(--text)">WELCOME5</b> at checkout, or join the list.</p>
       <form class="news" id="newsForm"><input type="email" placeholder="you@email.com" aria-label="Email" required><button class="btn">Join</button></form></div>
   </div>
-  <div class="copy"><span>© <span id="yr"></span> Nnedverse. All rights reserved.</span><span>Secure payments by Razorpay</span></div>
+  <div class="copy"><span>© <span id="yr"></span> Needverse. All rights reserved.</span><span>Secure payments by Razorpay</span></div>
 </div></footer>
 
 <div id="overlay" class="overlay"></div>
@@ -406,7 +417,7 @@ $("sort").onchange=render;
 /* kits */
 $("kitGrid").innerHTML=BUNDLES.map((b,i)=>{
   const raw=b.ids.reduce((s,id)=>s+byId(id).price,0);
-  return `<div class="kit"><span class="big">${b.icon}</span><span class="tag">Save ${Math.round(b.off*100)}%</span><h3>${b.name}</h3><p>${b.desc}</p>
+  return `<div class="kit"><div class="top"><span class="tag">Save ${Math.round(b.off*100)}%</span><span class="big">${b.icon}</span></div><h3>${b.name}</h3><p>${b.desc}</p>
   <div class="row"><b>${money(raw*(1-b.off))}</b><s>${money(raw)}</s></div>
   <button class="btn" data-b="${i}">Add full kit</button></div>`}).join("");
 $("kitGrid").onclick=e=>{const i=e.target.dataset.b;if(i==null)return;BUNDLES[i].ids.forEach(id=>cart[id]=(cart[id]||0)+1);cartChanged();toast("Kit added to cart");openCart(true)};
@@ -424,7 +435,7 @@ function renderCart(){
     <div class="pr">${money(p.price*cart[id])}<button class="rm" data-rm="${id}">Remove</button></div></div>`}).join(""):`<div class="cempty"><div>🛒</div><p>Your cart is empty.<br>Add something and it shows up here.</p></div>`;
   const t=totals();
   $("tSub").textContent=money(t.sub);$("tDiscRow").hidden=t.disc<=0;$("tDisc").textContent="−"+money(t.disc);
-  $("tShip").textContent=t.ship?money(t.ship):"Free";$("tTotal").textContent=money(t.total);
+  $("tShip").textContent=t.sub===0?"—":t.ship?money(t.ship):"Free";$("tTotal").textContent=money(t.total);
   const left=FREE_SHIP-t.after;
   $("ship").innerHTML=t.sub===0?"":left>0?`Add <b>${money(left)}</b> more for free shipping<div class="track"><div class="fill" style="width:${Math.min(100,t.after/FREE_SHIP*100)}%"></div></div>`:`🎉 <b>You've unlocked free shipping</b><div class="track"><div class="fill" style="width:100%"></div></div>`;
   $("checkoutBtn").disabled=!ids.length;
@@ -453,7 +464,7 @@ $("coForm").onsubmit=async e=>{e.preventDefault();
     const r=await fetch("/api/create-order",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({cart,promo,customer:f,vehicle})});
     const o=await r.json().catch(()=>({}));
     if(!r.ok)throw new Error(o.error||"Could not start payment. Is the server running?");
-    const rz=new Razorpay({key:o.key,amount:o.amount,currency:o.currency,name:"Nnedverse",description:"Order "+o.ref,order_id:o.orderId,
+    const rz=new Razorpay({key:o.key,amount:o.amount,currency:o.currency,name:"Needverse",description:"Order "+o.ref,order_id:o.orderId,
       prefill:{name:f.name,email:f.email,contact:f.phone},theme:{color:"#ff4d1a"},
       modal:{ondismiss:()=>{btn.disabled=false}},
       handler:async resp=>{

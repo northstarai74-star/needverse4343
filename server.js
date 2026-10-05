@@ -170,7 +170,7 @@ function adminAuth(req, res, next) {
   const [scheme, token] = (req.get("authorization") || "").split(" ");
   const [u, ...p] = scheme === "Basic" && token ? Buffer.from(token, "base64").toString().split(":") : [];
   if (u !== undefined && same(u, ADMIN_USER) && same(p.join(":"), ADMIN_PASSWORD)) return next();
-  res.set("WWW-Authenticate", 'Basic realm="Nnedverse admin"').status(401).send("Login required");
+  res.set("WWW-Authenticate", 'Basic realm="Needverse admin"').status(401).send("Login required");
 }
 const FULFIL = ["new", "packed", "shipped", "delivered", "cancelled"];
 
@@ -281,7 +281,7 @@ app.use((err, req, res, next) => {
 
 db.check().then(() => {
   app.listen(PORT, () => {
-    console.log(`Nnedverse running at http://localhost:${PORT}`);
+    console.log(`Needverse running at http://localhost:${PORT}`);
     console.log(`Database: Supabase connected`);
     console.log(`Webhook:  ${RAZORPAY_WEBHOOK_SECRET ? "ready at /api/razorpay-webhook" : "NOT configured (set RAZORPAY_WEBHOOK_SECRET)"}`);
     console.log(`Admin:    ${ADMIN_PASSWORD ? `http://localhost:${PORT}/admin  (user: ${ADMIN_USER})` : "DISABLED (set ADMIN_PASSWORD)"}`);

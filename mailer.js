@@ -20,7 +20,7 @@ function body(o, forOwner) {
   const v = o.vehicle ? `<p style="margin:0 0 14px;color:#555">Vehicle: ${esc(o.vehicle.year)} ${esc(o.vehicle.make)} ${esc(o.vehicle.model)}</p>` : "";
   const heading = forOwner ? `New paid order ${esc(o.ref)}` : `Thanks ${esc(c.name.split(" ")[0])}, your order is confirmed`;
   return `<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;color:#111">
-  <div style="background:#ff4d1a;color:#fff;padding:18px 24px;font-size:22px;font-weight:bold">Nnedverse</div>
+  <div style="background:#ff4d1a;color:#fff;padding:18px 24px;font-size:22px;font-weight:bold">Needverse</div>
   <div style="padding:24px;border:1px solid #eee;border-top:0">
     <h2 style="margin:0 0 6px">${heading}</h2>
     <p style="margin:0 0 14px;color:#555">Order <b>${esc(o.ref)}</b> · Payment ID ${esc(o.paymentId)}</p>
@@ -52,7 +52,7 @@ function shippedBody(o) {
         ${safeUrl ? `<div style="margin-top:12px"><a href="${esc(safeUrl)}" style="background:#ff4d1a;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:bold;display:inline-block">Track your package</a></div>` : ""}
       </div>` : "";
   return `<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;color:#111">
-  <div style="background:#ff4d1a;color:#fff;padding:18px 24px;font-size:22px;font-weight:bold">Nnedverse</div>
+  <div style="background:#ff4d1a;color:#fff;padding:18px 24px;font-size:22px;font-weight:bold">Needverse</div>
   <div style="padding:24px;border:1px solid #eee;border-top:0">
     <h2 style="margin:0 0 6px">Your order is on its way 🚚</h2>
     <p style="margin:0 0 6px;color:#555">Hi ${esc(c.name.split(" ")[0])}, order <b>${esc(o.ref)}</b> has shipped.</p>
@@ -74,7 +74,7 @@ async function sendShippedEmail(o) {
 function refundBody(o, r) {
   const left = Math.round((o.amount - (o.refunded || 0)) * 100) / 100;
   return `<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;color:#111">
-  <div style="background:#ff4d1a;color:#fff;padding:18px 24px;font-size:22px;font-weight:bold">Nnedverse</div>
+  <div style="background:#ff4d1a;color:#fff;padding:18px 24px;font-size:22px;font-weight:bold">Needverse</div>
   <div style="padding:24px;border:1px solid #eee;border-top:0">
     <h2 style="margin:0 0 6px">Your refund of ${money(r.amount)} is on its way</h2>
     <p style="margin:0 0 14px;color:#555">Hi ${esc(o.customer.name.split(" ")[0])}, we've refunded part or all of order <b>${esc(o.ref)}</b> to your original payment method.</p>
