@@ -103,12 +103,35 @@ input.bad{border-color:var(--err)}
 .toast{position:fixed;left:50%;bottom:28px;translate:-50% 100px;background:var(--text);color:#111;font-weight:600;font-size:.92rem;padding:12px 22px;border-radius:999px;opacity:0;transition:.3s;z-index:70;pointer-events:none;box-shadow:0 12px 40px rgba(0,0,0,.5);max-width:92vw;text-align:center}
 .toast.show{translate:-50% 0;opacity:1}
 
+
+/* demo payment */
+.demobar{background:#2a2410;border-bottom:1px solid #5c4a10;color:var(--gold);text-align:center;font-size:.82rem;font-weight:600;padding:8px 12px}
+dialog{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:22px;width:min(460px,94vw);padding:0;box-shadow:0 40px 100px rgba(0,0,0,.7);overflow:hidden}
+dialog::backdrop{background:rgba(0,0,0,.72);backdrop-filter:blur(4px)}
+.dp-head{padding:20px 24px;background:var(--panel2);border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:12px}
+.dp-head b{display:block;font:800 1.5rem/1 var(--disp);text-transform:uppercase}
+.dp-head small{color:var(--muted)}
+.dp-amt{font:800 1.8rem/1 var(--disp)}
+.dp-warn{background:#2a2410;color:var(--gold);font-size:.78rem;font-weight:600;padding:8px 24px;border-bottom:1px solid #5c4a10}
+.dp-body{padding:20px 24px 24px}
+.tabs{display:flex;gap:6px;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:4px}
+.tabs button{flex:1;background:none;border:0;border-radius:9px;padding:9px 6px;font-weight:600;font-size:.88rem;color:var(--muted);cursor:pointer}
+.tabs button.on{background:var(--accent);color:#fff}
+.dp-body label{margin-top:14px}
+.dp-body .hint{color:var(--muted);font-size:.78rem;margin-top:14px}
+.dp-body .hint code{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:1px 6px;color:var(--text)}
+.dp-body select{display:block;width:100%;margin-top:6px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:1rem;color:var(--text)}
+.dp-err{color:#ffb3b3;font-size:.85rem;margin-top:12px;min-height:1.2em}
+.dp-acts{display:flex;gap:10px;margin-top:18px}
+.dp-acts .btn{flex:1}
+.dp-acts .btn:first-child{flex:0 0 auto}
 @media (max-width:900px){.grid{grid-template-columns:1fr}.sum{position:static;order:-1}}
 @media (max-width:520px){.wrap{padding:0 16px}.card{padding:20px}.two{grid-template-columns:1fr}.secure span{display:none}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation-duration:.01ms!important}}
 </style>
 </head>
 <body>
+<div class="demobar" id="demoBar" hidden>DEMO MODE: payments are simulated. No money is charged and no order is saved.</div>
 <header class="top"><div class="wrap">
   <a class="logo" href="/"><i>⚡</i>Needverse</a>
   <div class="secure">
@@ -181,6 +204,31 @@ input.bad{border-color:var(--err)}
   </div>
 </div></main>
 
+<dialog id="demoPay" aria-labelledby="dpTitle">
+  <div class="dp-head"><div><b id="dpTitle">Needverse Pay</b><small>Demo payment window</small></div><div class="dp-amt" id="dpAmt"></div></div>
+  <div class="dp-warn">DEMO ONLY. Use the test details shown. Never enter a real card.</div>
+  <form class="dp-body" id="dpForm" novalidate>
+    <div class="tabs" role="tablist"><button type="button" class="on" data-t="card">Card</button><button type="button" data-t="upi">UPI</button><button type="button" data-t="bank">Netbanking</button></div>
+    <div data-p="card">
+      <label>Card number<input id="dpCard" inputmode="numeric" autocomplete="off" placeholder="4111 1111 1111 1111" maxlength="19"></label>
+      <div class="two" style="grid-template-columns:1fr 1fr">
+        <label>Expiry<input id="dpExp" inputmode="numeric" autocomplete="off" placeholder="MM/YY" maxlength="5"></label>
+        <label>CVV<input id="dpCvv" inputmode="numeric" autocomplete="off" placeholder="123" maxlength="4" type="password"></label>
+      </div>
+      <p class="hint">Test card <code>4111 1111 1111 1111</code>, any future expiry, any CVV. Card ending <code>0002</code> simulates a declined payment.</p>
+    </div>
+    <div data-p="upi" hidden>
+      <label>UPI ID<input id="dpUpi" autocomplete="off" placeholder="success@demo"></label>
+      <p class="hint">Use <code>success@demo</code> (or any <code>name@bank</code>). <code>fail@demo</code> simulates a failure.</p>
+    </div>
+    <div data-p="bank" hidden>
+      <label>Choose your bank<select id="dpBank"><option>HDFC Bank</option><option>ICICI Bank</option><option>State Bank of India</option><option>Axis Bank</option><option>Kotak Mahindra Bank</option></select></label>
+      <p class="hint">You'll be returned to the shop after a simulated bank approval.</p>
+    </div>
+    <div class="dp-err" id="dpErr" role="alert"></div>
+    <div class="dp-acts"><button type="button" class="btn ghost" id="dpCancel">Cancel</button><button class="btn" id="dpPay">Pay <span id="dpPayAmt"></span></button></div>
+  </form>
+</dialog>
 <div id="toast" class="toast" role="status"></div>
 
 <script src="catalog.js"></script>
@@ -188,6 +236,9 @@ input.bad{border-color:var(--err)}
 const $=id=>document.getElementById(id);
 const money=n=>STORE.symbol+n.toLocaleString("en-IN",{minimumFractionDigits:n%1?2:0,maximumFractionDigits:2});
 const store={get(k,d){try{return JSON.parse(localStorage.getItem(k))??d}catch{return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch{}}};
+// Demo mode (?demo=1) swaps Razorpay for a simulated payment window. It is remembered for the tab, never saves orders, and never charges anything.
+let DEMO=false;
+try{const q=new URLSearchParams(location.search).get("demo");if(q==="1")sessionStorage.setItem("demo","1");if(q==="0")sessionStorage.removeItem("demo");DEMO=sessionStorage.getItem("demo")==="1"}catch{DEMO=new URLSearchParams(location.search).get("demo")==="1"}
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
 // Drop anything in the saved cart that is no longer in the catalog, so a stale cart can't break the page.
@@ -256,8 +307,54 @@ function loadRazorpay(){
       el.onerror=()=>{el.remove();n>0?setTimeout(()=>tryLoad(n-1),600):fail(new Error("Could not load the Razorpay payment window. Check your connection or disable ad/script blockers, then try again."))};
       document.head.appendChild(el)};
     tryLoad(2)})}
-loadRazorpay().catch(()=>{}); // warm up so the window opens instantly on click
+if(!DEMO)loadRazorpay().catch(()=>{}); // warm up so the window opens instantly on click
 const showErr=m=>{const b=$("payErr");b.textContent=m||"";b.hidden=!m;if(m)b.scrollIntoView({block:"nearest",behavior:"smooth"})};
+
+/* ----- demo payment (no Razorpay, no server) ----- */
+const dp=$("demoPay"),dpErr=$("dpErr");
+let dpTab="card",dpCustomer=null;
+if(DEMO){$("demoBar").hidden=false;document.title="Checkout (demo) | Needverse"}
+dp.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{dpTab=b.dataset.t;dpErr.textContent="";
+  dp.querySelectorAll(".tabs button").forEach(x=>x.classList.toggle("on",x===b));
+  dp.querySelectorAll("[data-p]").forEach(x=>x.hidden=x.dataset.p!==dpTab)});
+$("dpCard").oninput=e=>{e.target.value=e.target.value.replace(/\D/g,"").slice(0,16).replace(/(.{4})/g,"$1 ").trim()};
+$("dpExp").oninput=e=>{let v=e.target.value.replace(/\D/g,"").slice(0,4);if(v.length>2)v=v.slice(0,2)+"/"+v.slice(2);e.target.value=v};
+$("dpCvv").oninput=e=>{e.target.value=e.target.value.replace(/\D/g,"")};
+function dpValidate(){
+  if(dpTab==="card"){
+    const n=$("dpCard").value.replace(/\s/g,""),[mm,yy]=$("dpExp").value.split("/");
+    if(n.length!==16)return"Enter the 16-digit card number.";
+    const m=+mm,y=2000+ +yy,now=new Date();
+    if(!(m>=1&&m<=12)||!yy||yy.length!==2||y<now.getFullYear()||(y===now.getFullYear()&&m<now.getMonth()+1))return"Enter a valid, future expiry (MM/YY).";
+    if($("dpCvv").value.length<3)return"Enter the 3-digit CVV.";
+  }else if(dpTab==="upi"){
+    if(!/^[\w.-]{2,}@[A-Za-z]{2,}$/.test($("dpUpi").value.trim()))return"Enter a UPI ID like name@bank.";
+  }
+  return""}
+function dpOutcome(){
+  if(dpTab==="card"&&$("dpCard").value.replace(/\s/g,"").endsWith("0002"))return"Payment declined by the bank (demo).";
+  if(dpTab==="upi"&&/^fail@/i.test($("dpUpi").value.trim()))return"UPI payment failed (demo).";
+  return""}
+function demoPayment(f){
+  dpCustomer=f;dpErr.textContent="";$("dpForm").reset();
+  dp.querySelector('.tabs button[data-t="card"]').click();
+  const amt=money(totals().total);$("dpAmt").textContent=amt;$("dpPayAmt").textContent="· "+amt;
+  dp.showModal()}
+$("dpCancel").onclick=()=>{dp.close();busy(false);showErr("Payment window closed. Your cart is saved. Press Pay to try again.")};
+dp.addEventListener("cancel",e=>{e.preventDefault();$("dpCancel").click()});
+$("dpForm").onsubmit=async e=>{e.preventDefault();
+  const bad=dpValidate();if(bad){dpErr.textContent=bad;return}
+  const pb=$("dpPay"),html=pb.innerHTML;pb.disabled=true;pb.innerHTML='<span class="spin"></span> Processing…';
+  await new Promise(r=>setTimeout(r,1500));
+  const fail=dpOutcome();
+  pb.disabled=false;pb.innerHTML=html;
+  if(fail){dpErr.textContent=fail+" Try another method or the test card above.";return}
+  const total=totals().total,f=dpCustomer;
+  const ref="DEMO-"+Array.from(crypto.getRandomValues(new Uint8Array(3)),b=>b.toString(16).padStart(2,"0")).join("").toUpperCase();
+  dp.close();store.set("lastOrder",cart);cart={};promo=null;save();
+  $("doneRef").textContent=ref;
+  $("doneMsg").textContent=`Thanks ${f.name.split(" ")[0]}! This was a demo payment of ${money(total)}. No money was charged and no order was placed.`;
+  $("page").hidden=true;$("done").hidden=false;busy(false);scrollTo(0,0)};
 const btn=$("payBtn"),btnHtml=btn.innerHTML;
 const busy=on=>{btn.disabled=on;btn.innerHTML=on?'<span class="spin"></span> Processing…':btnHtml;if(!on)$("payTotal").textContent=money(totals().total)};
 form.onsubmit=async e=>{e.preventDefault();
@@ -266,6 +363,7 @@ form.onsubmit=async e=>{e.preventDefault();
   const f=Object.fromEntries(Object.keys(rules).map(k=>[k,form.elements[k].value.trim()]));
   store.set("contact",f);
   busy(true);showErr("");
+  if(DEMO)return demoPayment(f);
   try{
     await loadRazorpay();
     const r=await fetch("/api/create-order",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({cart,promo,customer:f,vehicle})});

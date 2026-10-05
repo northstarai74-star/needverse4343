@@ -424,7 +424,7 @@ $("closeCart").onclick=$("overlay").onclick=()=>openCart(false);
 addEventListener("keydown",e=>{if(e.key==="Escape")openCart(false)});
 
 /* checkout: dedicated page, reads the cart from localStorage */
-$("checkoutBtn").onclick=()=>{store.set("cart",cart);store.set("promo",promo);location.href="checkout.html"};
+$("checkoutBtn").onclick=()=>{store.set("cart",cart);store.set("promo",promo);let d="";try{if(new URLSearchParams(location.search).get("demo")==="1")sessionStorage.setItem("demo","1");d=sessionStorage.getItem("demo")==="1"?"?demo=1":""}catch{}location.href="checkout.html"+d};
 $("reorderBtn").onclick=()=>{const l=store.get("lastOrder",{});for(const id in l)cart[id]=(cart[id]||0)+l[id];cartChanged();openCart(true)};
 $("newsForm").onsubmit=e=>{e.preventDefault();e.target.reset();toast("You're on the list. Use WELCOME5 for 5% off")};
 
