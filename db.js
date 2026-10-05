@@ -20,7 +20,7 @@ function fromRow(r) {
     paymentId: r.payment_id || undefined, promo: r.promo, cart: r.cart, customer: r.customer,
     vehicle: r.vehicle, tracking: r.tracking || undefined, refunds: r.refunds || [],
     emailSent: r.email_sent, shippedEmailSent: r.shipped_email_sent,
-    paidAt: r.paid_at, createdAt: r.created_at, version: r.version
+    userId: r.user_id || undefined, paidAt: r.paid_at, createdAt: r.created_at, version: r.version
   };
 }
 function toRow(o) {
@@ -30,7 +30,7 @@ function toRow(o) {
     payment_id: o.paymentId || null, promo: o.promo || null, cart: o.cart, customer: o.customer,
     vehicle: o.vehicle || null, tracking: o.tracking || null, refunds: o.refunds || [],
     email_sent: !!o.emailSent, shipped_email_sent: !!o.shippedEmailSent,
-    paid_at: o.paidAt || null, ...(o.createdAt ? { created_at: o.createdAt } : {})
+    paid_at: o.paidAt || null, user_id: o.userId || null, ...(o.createdAt ? { created_at: o.createdAt } : {})
   };
 }
 
@@ -63,6 +63,11 @@ async function listOrders() {
   if (error) fail("list", error);
   return data.map(fromRow);
 }
+async function listOrdersByUser(userId) {
+  const { data, error } = await sb.from(T).select("*").eq("user_id", userId).order("created_at", { ascending: false });
+  if (error) fail("list", error);
+  return data.map(fromRow);
+}
 
 // Read -> change -> write, guarded by the `version` column so two requests touching
 // the same order can't silently overwrite each other (the loser re-reads and retries).
@@ -90,4 +95,4 @@ async function importOrder(orderId, o) {
   if (error) fail("import", error);
 }
 
-module.exports = { configured, check, insertOrder, getOrder, findByPaymentId, listOrders, updateOrder, importOrder };
+module.exports = { configured, check, insertOrder, getOrder, findByPaymentId, listOrders, listOrdersByUser, updateOrder, importOrder };

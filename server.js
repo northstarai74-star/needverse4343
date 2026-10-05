@@ -6,6 +6,7 @@ const Razorpay = require("razorpay");
 const { STORE, byId, computeTotals } = require("./public/catalog.js");
 const { sendOrderEmails, sendShippedEmail, sendRefundEmail, emailEnabled } = require("./mailer");
 const db = require("./db");
+const auth = require("./auth");
 
 const { RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, RAZORPAY_WEBHOOK_SECRET, ADMIN_USER = "admin", ADMIN_PASSWORD, PORT = 3000 } = process.env;
 // Without keys the storefront still loads; only the payment routes refuse (see needPayments).
@@ -122,7 +123,7 @@ function cleanCart(input) {
   return Object.keys(cart).length ? cart : null;
 }
 
-app.post("/api/create-order", needPayments, wrap(async (req, res) => {
+app.post("/api/create-order", needPayments, auth.optionalUser, wrap(async (req, res) => {
   const cart = cleanCart(req.body.cart);
   if (!cart) return res.status(400).json({ error: "Your cart is empty or invalid." });
   const promo = typeof req.body.promo === "string" && STORE.promos[req.body.promo] ? req.body.promo : null;
@@ -141,7 +142,7 @@ app.post("/api/create-order", needPayments, wrap(async (req, res) => {
   });
 
   await db.insertOrder(order.id, {
-    ref, status: "created", amount: t.total, currency: STORE.currency, cart, promo,
+    ref, status: "created", userId: req.user?.id, amount: t.total, currency: STORE.currency, cart, promo,
     customer: { name: clip(c.name, 100), email: clip(c.email, 120), phone: clip(c.phone, 20), addr: clip(c.addr, 200), city: clip(c.city, 80), zip: clip(c.zip, 12) },
     vehicle: req.body.vehicle && typeof req.body.vehicle === "object"
       ? { make: clip(req.body.vehicle.make ?? "", 40), model: clip(req.body.vehicle.model ?? "", 40), year: clip(req.body.vehicle.year ?? "", 4) } : null
@@ -162,6 +163,20 @@ app.post("/api/verify-payment", needPayments, wrap(async (req, res) => {
   const o = await markPaid(oid, pid);
   if (!o) return res.status(404).json({ error: "Order not found." });
   res.json({ ref: o.ref, amount: o.amount });
+}));
+
+// ---------- Customer accounts ----------
+// Sign-up, sign-in and password reset happen in the browser against Supabase Auth; the server only
+// verifies the token it receives. Guest checkout keeps working: a signed-in order is just linked to the user.
+app.get("/api/auth/config", (req, res) => res.set("Cache-Control", "no-store").json(auth.publicConfig()));
+
+app.get("/api/me/orders", auth.requireUser, wrap(async (req, res) => {
+  const orders = (await db.listOrdersByUser(req.user.id)).map((o) => ({
+    ref: o.ref, status: o.status, fulfillment: o.fulfillment, amount: o.amount, currency: o.currency, refunded: o.refunded,
+    tracking: o.tracking || null, createdAt: o.createdAt,
+    lines: Object.entries(o.cart).map(([id, q]) => { const p = byId(Number(id)); return { name: p ? p.name : "Product " + id, qty: q }; })
+  }));
+  res.set("Cache-Control", "no-store").json({ symbol: STORE.symbol, email: req.user.email, orders });
 }));
 
 // ---------- Admin (orders page) ----------
@@ -305,6 +320,7 @@ app.get("/api/health", wrap(async (req, res) => {
     payments: paymentsReady ? (RAZORPAY_KEY_ID.startsWith("rzp_live_") ? "ok (live keys)" : "ok (test keys)") : "missing RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET",
     webhook: RAZORPAY_WEBHOOK_SECRET ? "ok" : "not set (optional: RAZORPAY_WEBHOOK_SECRET)",
     admin: ADMIN_PASSWORD ? "ok" : "disabled (set ADMIN_PASSWORD)",
+    accounts: auth.enabled ? "ok" : "disabled (set SUPABASE_ANON_KEY)",
     emails: emailEnabled ? "ok" : "disabled (set SMTP_HOST, SMTP_USER, SMTP_PASS)"
   });
 }));
@@ -325,6 +341,7 @@ if (require.main === module) db.check().then(() => {
     console.log(`Database: Supabase connected`);
     console.log(`Webhook:  ${RAZORPAY_WEBHOOK_SECRET ? "ready at /api/razorpay-webhook" : "NOT configured (set RAZORPAY_WEBHOOK_SECRET)"}`);
     console.log(`Admin:    ${ADMIN_PASSWORD ? `http://localhost:${PORT}/admin  (user: ${ADMIN_USER})` : "DISABLED (set ADMIN_PASSWORD)"}`);
+    console.log(`Accounts: ${auth.enabled ? "enabled (Supabase Auth)" : "DISABLED (set SUPABASE_ANON_KEY)"}`);
     console.log(`Emails:   ${emailEnabled ? "enabled" : "NOT configured (set SMTP_* in .env)"}`);
   });
 }).catch((err) => {

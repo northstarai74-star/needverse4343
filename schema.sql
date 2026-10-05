@@ -20,12 +20,17 @@ create table if not exists public.orders (
   email_sent          boolean not null default false,
   shipped_email_sent  boolean not null default false,
   paid_at             timestamptz,
+  user_id             uuid,                             -- Supabase Auth user who placed it (null = guest checkout)
   created_at          timestamptz not null default now(),
   version             integer not null default 0        -- used to stop two requests overwriting each other
 );
 
 create index if not exists orders_created_at_idx on public.orders (created_at desc);
 create index if not exists orders_status_idx     on public.orders (status, fulfillment);
+
+-- Already ran an older schema.sql? Run these two lines once to add customer accounts:
+alter table public.orders add column if not exists user_id uuid;
+create index if not exists orders_user_idx on public.orders (user_id, created_at desc);
 
 -- Lock the table down. The server uses the service_role key, which bypasses
 -- row level security. With RLS on and no policies, the public "anon" key
