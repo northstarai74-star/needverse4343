@@ -197,15 +197,6 @@ footer li a:hover{color:var(--accent)}
 .tot .dsc{color:var(--ok)}
 .df .btn{margin-top:14px}
 
-/* dialogs */
-dialog{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:22px;width:min(480px,92vw);padding:30px;box-shadow:0 40px 100px rgba(0,0,0,.7)}
-dialog::backdrop{background:rgba(0,0,0,.7);backdrop-filter:blur(4px)}
-dialog h2{font-size:2.2rem;margin-bottom:6px}
-dialog label{display:block;font-size:.78rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-top:14px}
-dialog input{display:block;width:100%;margin-top:6px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px 14px;outline:0;text-transform:none;letter-spacing:0;font-weight:400;font-size:1rem}
-dialog input:focus{border-color:var(--accent)}
-.two{display:grid;grid-template-columns:2fr 1fr;gap:12px}
-.acts{display:flex;gap:10px;justify-content:flex-end;margin-top:22px}
 .toast{position:fixed;left:50%;bottom:28px;translate:-50% 100px;background:var(--text);color:#111;font-weight:600;font-size:.92rem;padding:12px 22px;border-radius:999px;opacity:0;transition:.3s;z-index:70;pointer-events:none;box-shadow:0 12px 40px rgba(0,0,0,.5)}
 .toast.show{translate:-50% 0;opacity:1}
 
@@ -327,27 +318,8 @@ dialog input:focus{border-color:var(--accent)}
   </div>
 </aside>
 
-<dialog id="checkout">
-  <form id="coForm">
-    <h2>Checkout</h2>
-    <p class="muted small" style="margin:0">One page, no account. Your details are remembered for next time.</p>
-    <label>Full name<input name="name" autocomplete="name" required></label>
-    <label>Email<input name="email" type="email" autocomplete="email" required></label>
-    <label>Phone<input name="phone" type="tel" autocomplete="tel" required></label>
-    <label>Street address<input name="addr" autocomplete="street-address" required></label>
-    <div class="two"><label>City<input name="city" autocomplete="address-level2" required></label><label>ZIP<input name="zip" autocomplete="postal-code" required></label></div>
-    <p class="muted small" style="margin:16px 0 0">Pay securely with UPI, cards, netbanking or wallets via Razorpay.</p>
-    <div class="acts"><button type="button" id="coCancel" class="btn ghost">Back</button><button class="btn" id="payBtn">Pay securely · <span id="coTotal"></span></button></div>
-  </form>
-</dialog>
-<dialog id="done">
-  <h2>Order confirmed ✅</h2>
-  <p id="doneMsg" class="muted"></p>
-  <div class="acts"><button id="doneClose" class="btn">Keep shopping</button></div>
-</dialog>
 <div id="toast" class="toast" role="status"></div>
 
-<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 <script src="catalog.js"></script>
 <script>
 /* ===== App ===== */
@@ -451,35 +423,8 @@ $("cartBtn").onclick=()=>openCart(true);
 $("closeCart").onclick=$("overlay").onclick=()=>openCart(false);
 addEventListener("keydown",e=>{if(e.key==="Escape")openCart(false)});
 
-/* checkout */
-const co=$("checkout");
-$("checkoutBtn").onclick=()=>{const s=store.get("contact",{});for(const k in s)if($("coForm").elements[k])$("coForm").elements[k].value=s[k];
-  $("coTotal").textContent=money(totals().total);co.showModal()};
-$("coCancel").onclick=()=>co.close();
-$("coForm").onsubmit=async e=>{e.preventDefault();
-  const f=Object.fromEntries(new FormData($("coForm")));store.set("contact",f);
-  const btn=$("payBtn");btn.disabled=true;
-  try{
-    if(typeof Razorpay==="undefined")throw new Error("Payment script failed to load. Check your internet connection.");
-    const r=await fetch("/api/create-order",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({cart,promo,customer:f,vehicle})});
-    const o=await r.json().catch(()=>({}));
-    if(!r.ok)throw new Error(o.error||"Could not start payment. Is the server running?");
-    const rz=new Razorpay({key:o.key,amount:o.amount,currency:o.currency,name:"Needverse",description:"Order "+o.ref,order_id:o.orderId,
-      prefill:{name:f.name,email:f.email,contact:f.phone},theme:{color:"#ff4d1a"},
-      modal:{ondismiss:()=>{btn.disabled=false}},
-      handler:async resp=>{
-        try{
-          const v=await fetch("/api/verify-payment",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(resp)});
-          const d=await v.json();if(!v.ok)throw new Error(d.error||"Verification failed");
-          store.set("lastOrder",cart);
-          $("doneMsg").textContent=`Thanks ${f.name.split(" ")[0]}! Payment received for order ${d.ref} (${money(d.amount)}). A receipt will be sent to ${f.email}.`;
-          cart={};promo=null;store.set("promo",null);cartChanged();openCart(false);$("done").showModal();
-        }catch(err){toast(err.message+" Contact us with payment id "+resp.razorpay_payment_id)}
-        btn.disabled=false}});
-    rz.on("payment.failed",x=>{toast(x.error.description||"Payment failed");btn.disabled=false});
-    co.close();rz.open();
-  }catch(err){toast(err.message);btn.disabled=false}};
-$("doneClose").onclick=()=>$("done").close();
+/* checkout: dedicated page, reads the cart from localStorage */
+$("checkoutBtn").onclick=()=>{store.set("cart",cart);store.set("promo",promo);const m=location.search.match(/demo=[01]/);location.href="checkout.html"+(m?"?"+m[0]:"")};
 $("reorderBtn").onclick=()=>{const l=store.get("lastOrder",{});for(const id in l)cart[id]=(cart[id]||0)+l[id];cartChanged();openCart(true)};
 $("newsForm").onsubmit=e=>{e.preventDefault();e.target.reset();toast("You're on the list. Use WELCOME5 for 5% off")};
 

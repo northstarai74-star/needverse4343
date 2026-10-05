@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Checkout | Needverse</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a0b0d;--bg2:#101216;--panel:#15181d;--panel2:#1b1f26;--line:#262b34;
+  --text:#f4f1ec;--muted:#8e97a6;--accent:#ff4d1a;--accent2:#ff7a3d;--ok:#3ddc84;--err:#ff5d5d;
+  --disp:"Barlow Condensed","Arial Narrow",Impact,sans-serif;--body:Inter,system-ui,Segoe UI,sans-serif;
+  --r:16px;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{overflow-x:clip}
+body{margin:0;background:var(--bg);color:var(--text);font:400 16px/1.55 var(--body);-webkit-font-smoothing:antialiased;min-height:100vh}
+a{color:inherit;text-decoration:none}
+button,input{font:inherit;color:inherit}
+.wrap{max-width:1100px;margin:0 auto;padding:0 24px}
+.muted{color:var(--muted)}.small{font-size:.85rem}
+h1,h2,h3{font-family:var(--disp);text-transform:uppercase;letter-spacing:.01em;margin:0;line-height:.95}
+
+/* header */
+.top{border-bottom:1px solid var(--line);background:rgba(10,11,13,.85);backdrop-filter:blur(14px)}
+.top .wrap{display:flex;align-items:center;justify-content:space-between;height:72px}
+.logo{font:800 1.9rem/1 var(--disp);text-transform:uppercase;letter-spacing:.02em;display:flex;align-items:center;gap:8px}
+.logo i{display:grid;place-items:center;width:32px;height:32px;background:var(--accent);border-radius:8px;font-style:normal;font-size:1.3rem;transform:skewX(-8deg)}
+.secure{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:.85rem;font-weight:500}
+.secure svg{color:var(--ok)}
+.back{color:var(--muted);font-size:.9rem;font-weight:500}
+.back:hover{color:var(--text)}
+
+/* layout */
+main{padding:40px 0 80px}
+.head{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin-bottom:28px;flex-wrap:wrap}
+.head h1{font-size:clamp(2.4rem,5vw,3.6rem);font-weight:800}
+.grid{display:grid;grid-template-columns:1.2fr .8fr;gap:32px;align-items:start}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:26px}
+.card+.card{margin-top:20px}
+.card h2{font-size:1.5rem;margin-bottom:4px;display:flex;align-items:center;gap:12px}
+.card h2 .n{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--accent);font:700 .85rem/1 var(--body);color:#fff}
+
+/* form */
+label{display:block;font-size:.76rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-top:16px}
+input{display:block;width:100%;margin-top:6px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px 14px;outline:0;text-transform:none;letter-spacing:0;font-weight:400;font-size:1rem;transition:.15s}
+input:focus{border-color:var(--accent);box-shadow:0 0 0 4px rgba(255,77,26,.15)}
+input.bad{border-color:var(--err)}
+.err{color:var(--err);font-size:.78rem;font-weight:500;letter-spacing:0;text-transform:none;margin-top:5px;min-height:0}
+.two{display:grid;grid-template-columns:2fr 1fr;gap:14px}
+.methods{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.methods span{background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:5px 14px;font-size:.8rem;font-weight:600;color:#c1c7d1}
+
+/* buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--accent);color:#fff;border:0;border-radius:12px;padding:16px 22px;font-weight:700;cursor:pointer;transition:.2s}
+.btn:hover{background:var(--accent2);transform:translateY(-1px)}
+.btn:disabled{opacity:.4;pointer-events:none}
+.btn.ghost{background:transparent;border:1px solid var(--line)}
+.btn.ghost:hover{border-color:var(--text);background:transparent}
+.btn.block{width:100%;font-size:1.05rem}
+.payerr{margin-top:16px;background:rgba(255,93,93,.1);border:1px solid var(--err);color:#ffb3b3;border-radius:10px;padding:12px 14px;font-size:.9rem}
+.spin{width:16px;height:16px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite}
+@keyframes sp{to{rotate:360deg}}
+
+/* summary */
+.sum{position:sticky;top:24px}
+.line{display:grid;grid-template-columns:60px 1fr auto;gap:14px;align-items:center;padding:14px 0;border-bottom:1px solid var(--line)}
+.line:first-of-type{margin-top:14px;border-top:1px solid var(--line)}
+.line .th{overflow:hidden;width:60px;height:60px;border-radius:12px;background:radial-gradient(circle,var(--c),transparent 75%),var(--panel2);display:grid;place-items:center;font-size:1.8rem}
+.line .n{font-weight:600;font-size:.9rem;line-height:1.3}
+.qty{display:inline-flex;align-items:center;margin-top:6px;border:1px solid var(--line);border-radius:999px}
+.qty button{width:28px;height:28px;background:none;border:0;cursor:pointer;font-size:1rem;border-radius:50%}
+.qty button:hover{background:var(--panel2)}
+.qty span{min-width:22px;text-align:center;font-size:.85rem;font-weight:600}
+.line .pr{text-align:right;font-weight:700;font-size:.95rem}
+.line .rm{display:block;margin-left:auto;background:none;border:0;color:var(--muted);font-size:.75rem;cursor:pointer;padding:2px 0}
+.line .rm:hover{color:var(--err)}
+.pf{display:flex;gap:8px;margin:18px 0 6px}
+.pf input{margin:0;flex:1;min-width:0;text-transform:uppercase}
+.pf input::placeholder{text-transform:none}
+.pf .btn{padding:0 18px}
+.tot{margin-top:14px}
+.tot div{display:flex;justify-content:space-between;padding:3px 0;color:var(--muted);font-size:.92rem}
+.tot .dsc{color:var(--ok)}
+.tot .g{color:var(--text);font:800 1.9rem/1 var(--disp);padding-top:14px;margin-top:10px;border-top:1px solid var(--line)}
+.ship{font-size:.82rem;color:var(--muted);margin-top:12px}
+.ship b{color:var(--text)}
+.assure{display:flex;gap:18px;flex-wrap:wrap;margin-top:18px;color:var(--muted);font-size:.78rem}
+.assure span::before{content:"✔ ";color:var(--ok)}
+
+/* empty + done */
+.state{text-align:center;padding:72px 24px;max-width:520px;margin:0 auto}
+.state .big{font-size:3.4rem}
+.state h2{font-size:2.6rem;margin:12px 0 10px}
+.state p{margin:0 0 24px}
+.ref{display:inline-block;background:var(--panel2);border:1px dashed var(--line);border-radius:10px;padding:10px 18px;font:700 1.3rem/1 var(--disp);letter-spacing:.08em;margin-bottom:20px}
+.acts{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+
+.toast{position:fixed;left:50%;bottom:28px;translate:-50% 100px;background:var(--text);color:#111;font-weight:600;font-size:.92rem;padding:12px 22px;border-radius:999px;opacity:0;transition:.3s;z-index:70;pointer-events:none;box-shadow:0 12px 40px rgba(0,0,0,.5);max-width:92vw;text-align:center}
+.toast.show{translate:-50% 0;opacity:1}
+
+
+/* demo payment */
+.demobar{background:#2a2410;border-bottom:1px solid #5c4a10;color:var(--gold);text-align:center;font-size:.82rem;font-weight:600;padding:8px 12px}
+dialog{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:22px;width:min(460px,94vw);padding:0;box-shadow:0 40px 100px rgba(0,0,0,.7);overflow:hidden}
+dialog::backdrop{background:rgba(0,0,0,.72);backdrop-filter:blur(4px)}
+.dp-head{padding:20px 24px;background:var(--panel2);border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:12px}
+.dp-head b{display:block;font:800 1.5rem/1 var(--disp);text-transform:uppercase}
+.dp-head small{color:var(--muted)}
+.dp-amt{font:800 1.8rem/1 var(--disp)}
+.dp-warn{background:#2a2410;color:var(--gold);font-size:.78rem;font-weight:600;padding:8px 24px;border-bottom:1px solid #5c4a10}
+.dp-body{padding:20px 24px 24px}
+.tabs{display:flex;gap:6px;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:4px}
+.tabs button{flex:1;background:none;border:0;border-radius:9px;padding:9px 6px;font-weight:600;font-size:.88rem;color:var(--muted);cursor:pointer}
+.tabs button.on{background:var(--accent);color:#fff}
+.dp-body label{margin-top:14px}
+.dp-body .hint{color:var(--muted);font-size:.78rem;margin-top:14px}
+.dp-body .hint code{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:1px 6px;color:var(--text)}
+.dp-body select{display:block;width:100%;margin-top:6px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:1rem;color:var(--text)}
+.dp-err{color:#ffb3b3;font-size:.85rem;margin-top:12px;min-height:1.2em}
+.dp-acts{display:flex;gap:10px;margin-top:18px}
+.dp-acts .btn{flex:1}
+.dp-acts .btn:first-child{flex:0 0 auto}
+@media (max-width:900px){.grid{grid-template-columns:1fr}.sum{position:static;order:-1}}
+@media (max-width:520px){.wrap{padding:0 16px}.card{padding:20px}.two{grid-template-columns:1fr}.secure span{display:none}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation-duration:.01ms!important}}
+</style>
+</head>
+<body>
+<div class="demobar" id="demoBar" hidden>DEMO MODE: payments are simulated. No money is charged and no order is saved.</div>
+<header class="top"><div class="wrap">
+  <a class="logo" href="/"><i>⚡</i>Needverse</a>
+  <div class="secure">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+    <span>Secure checkout</span>
+  </div>
+</div></header>
+
+<main><div class="wrap">
+  <div id="empty" class="state" hidden>
+    <div class="big">🛒</div>
+    <h2>Your cart is empty</h2>
+    <p class="muted">Add a few accessories and come back here to pay.</p>
+    <a class="btn" href="/#shop">Browse products</a>
+  </div>
+
+  <div id="done" class="state" hidden>
+    <div class="big">✅</div>
+    <h2>Order confirmed</h2>
+    <div class="ref" id="doneRef"></div>
+    <p class="muted" id="doneMsg"></p>
+    <div class="acts"><a class="btn" href="/">Keep shopping</a></div>
+  </div>
+
+  <div id="page" hidden>
+    <div class="head">
+      <h1>Checkout</h1>
+      <a class="back" href="/">← Continue shopping</a>
+    </div>
+    <div class="grid">
+      <form id="coForm" novalidate>
+        <section class="card">
+          <h2><span class="n">1</span>Contact</h2>
+          <p class="muted small" style="margin:0">No account needed. We'll send your receipt and tracking here.</p>
+          <label>Full name<input name="name" autocomplete="name" required maxlength="100"><div class="err" data-for="name"></div></label>
+          <label>Email<input name="email" type="email" inputmode="email" autocomplete="email" required maxlength="120"><div class="err" data-for="email"></div></label>
+          <label>Phone<input name="phone" type="tel" inputmode="tel" autocomplete="tel" required maxlength="20"><div class="err" data-for="phone"></div></label>
+        </section>
+        <section class="card">
+          <h2><span class="n">2</span>Delivery address</h2>
+          <label>Street address<input name="addr" autocomplete="street-address" required maxlength="200"><div class="err" data-for="addr"></div></label>
+          <div class="two">
+            <label>City<input name="city" autocomplete="address-level2" required maxlength="80"><div class="err" data-for="city"></div></label>
+            <label>PIN / ZIP<input name="zip" inputmode="numeric" autocomplete="postal-code" required maxlength="12"><div class="err" data-for="zip"></div></label>
+          </div>
+        </section>
+        <section class="card">
+          <h2><span class="n">3</span>Payment</h2>
+          <p class="muted small" style="margin:0">You'll pick how to pay in the Razorpay window. Card details never touch our servers.</p>
+          <div class="methods"><span>UPI</span><span>Cards</span><span>Netbanking</span><span>Wallets</span></div>
+          <div class="payerr" id="payErr" role="alert" hidden></div>
+          <button class="btn block" id="payBtn" style="margin-top:22px">Pay securely · <span id="payTotal"></span></button>
+        </section>
+      </form>
+
+      <aside class="card sum" aria-label="Order summary">
+        <h2>Order summary</h2>
+        <div id="items"></div>
+        <form id="promoForm" class="pf"><input id="promoIn" placeholder="Promo code (try SAVE10)" aria-label="Promo code" autocomplete="off"><button class="btn ghost">Apply</button></form>
+        <div class="tot">
+          <div><span>Subtotal</span><span id="tSub"></span></div>
+          <div class="dsc" id="tDiscRow" hidden><span>Savings</span><span id="tDisc"></span></div>
+          <div><span>Shipping</span><span id="tShip"></span></div>
+          <div class="g"><span>Total</span><span id="tTotal"></span></div>
+        </div>
+        <div class="ship" id="ship"></div>
+        <div class="assure"><span>Secure payment</span><span>Easy refunds</span><span>Fit guaranteed</span></div>
+      </aside>
+    </div>
+  </div>
+</div></main>
+
+<dialog id="demoPay" aria-labelledby="dpTitle">
+  <div class="dp-head"><div><b id="dpTitle">Needverse Pay</b><small>Demo payment window</small></div><div class="dp-amt" id="dpAmt"></div></div>
+  <div class="dp-warn">DEMO ONLY. Use the test details shown. Never enter a real card.</div>
+  <form class="dp-body" id="dpForm" novalidate>
+    <div class="tabs" role="tablist"><button type="button" class="on" data-t="card">Card</button><button type="button" data-t="upi">UPI</button><button type="button" data-t="bank">Netbanking</button></div>
+    <div data-p="card">
+      <label>Card number<input id="dpCard" inputmode="numeric" autocomplete="off" placeholder="4111 1111 1111 1111" maxlength="19"></label>
+      <div class="two" style="grid-template-columns:1fr 1fr">
+        <label>Expiry<input id="dpExp" inputmode="numeric" autocomplete="off" placeholder="MM/YY" maxlength="5"></label>
+        <label>CVV<input id="dpCvv" inputmode="numeric" autocomplete="off" placeholder="123" maxlength="4" type="password"></label>
+      </div>
+      <p class="hint">Test card <code>4111 1111 1111 1111</code>, any future expiry, any CVV. Card ending <code>0002</code> simulates a declined payment.</p>
+    </div>
+    <div data-p="upi" hidden>
+      <label>UPI ID<input id="dpUpi" autocomplete="off" placeholder="success@demo"></label>
+      <p class="hint">Use <code>success@demo</code> (or any <code>name@bank</code>). <code>fail@demo</code> simulates a failure.</p>
+    </div>
+    <div data-p="bank" hidden>
+      <label>Choose your bank<select id="dpBank"><option>HDFC Bank</option><option>ICICI Bank</option><option>State Bank of India</option><option>Axis Bank</option><option>Kotak Mahindra Bank</option></select></label>
+      <p class="hint">You'll be returned to the shop after a simulated bank approval.</p>
+    </div>
+    <div class="dp-err" id="dpErr" role="alert"></div>
+    <div class="dp-acts"><button type="button" class="btn ghost" id="dpCancel">Cancel</button><button class="btn" id="dpPay">Pay <span id="dpPayAmt"></span></button></div>
+  </form>
+</dialog>
+<div id="toast" class="toast" role="status"></div>
+
+<script src="catalog.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+const money=n=>STORE.symbol+n.toLocaleString("en-IN",{minimumFractionDigits:n%1?2:0,maximumFractionDigits:2});
+const store={get(k,d){try{return JSON.parse(localStorage.getItem(k))??d}catch{return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch{}}};
+// Demo mode (STORE.demoPayments in catalog.js, or ?demo=1 / ?demo=0 per tab) swaps Razorpay for a simulated payment window. It never saves orders and never charges anything.
+let DEMO=!!STORE.demoPayments;
+try{const q=new URLSearchParams(location.search).get("demo");if(q==="1"||q==="0")sessionStorage.setItem("demo",q);const v=sessionStorage.getItem("demo");if(v)DEMO=v==="1"}catch{const q=new URLSearchParams(location.search).get("demo");if(q)DEMO=q==="1"}
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+// Drop anything in the saved cart that is no longer in the catalog, so a stale cart can't break the page.
+let cart=Object.fromEntries(Object.entries(store.get("cart",{})).filter(([id,q])=>byId(+id)&&Number.isInteger(q)&&q>0));
+let promo=store.get("promo",null);if(!STORE.promos[promo])promo=null;
+const vehicle=store.get("vehicle",null);
+const totals=()=>computeTotals(cart,promo);
+const col=p=>CATS[p.cat].c;
+const photo=p=>`<img src="${esc(p.img||`images/${p.id}.jpg`)}" alt="" loading="lazy" onerror="this.remove()" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">`;
+
+let tt;function toast(m){const t=$("toast");t.textContent=m;t.classList.add("show");clearTimeout(tt);tt=setTimeout(()=>t.classList.remove("show"),3200)}
+
+/* ----- summary ----- */
+function save(){store.set("cart",cart);store.set("promo",promo)}
+function renderSummary(){
+  const ids=Object.keys(cart);
+  if(!ids.length){$("page").hidden=true;$("empty").hidden=false;return}
+  $("items").innerHTML=ids.map(id=>{const p=byId(+id);
+    return `<div class="line"><div class="th" style="position:relative;--c:${col(p)}55">${p.icon}${photo(p)}</div>
+    <div><div class="n">${esc(p.name)}</div><div class="qty"><button type="button" data-q="${id}" data-d="-1" aria-label="Decrease ${esc(p.name)}">−</button><span>${cart[id]}</span><button type="button" data-q="${id}" data-d="1" aria-label="Increase ${esc(p.name)}">+</button></div></div>
+    <div class="pr">${money(p.price*cart[id])}<button type="button" class="rm" data-rm="${id}">Remove</button></div></div>`}).join("");
+  const t=totals();
+  $("tSub").textContent=money(t.sub);
+  $("tDiscRow").hidden=t.disc<=0;$("tDisc").textContent="−"+money(t.disc);
+  $("tShip").textContent=t.ship?money(t.ship):"Free";
+  $("tTotal").textContent=$("payTotal").textContent=money(t.total);
+  const left=STORE.freeShip-t.after;
+  $("ship").innerHTML=left>0?`Add <b>${money(left)}</b> more for free shipping.`:"🎉 <b>You've unlocked free shipping.</b>";
+  if(promo)$("promoIn").value=promo;
+}
+$("items").onclick=e=>{const{q,d,rm}=e.target.dataset;
+  if(rm)delete cart[rm];
+  if(q){cart[q]=Math.min(50,cart[q]+ +d);if(cart[q]<=0)delete cart[q]}
+  if(rm||q){save();renderSummary()}};
+$("promoForm").onsubmit=e=>{e.preventDefault();const c=$("promoIn").value.trim().toUpperCase();
+  if(STORE.promos[c]){promo=c;toast(c+" applied")}else{promo=null;toast(c?"Invalid promo code":"Promo removed")}
+  save();renderSummary()};
+
+/* ----- form ----- */
+const form=$("coForm");
+const rules={
+  name:v=>v.length>=2||"Enter your full name",
+  email:v=>/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v)||"Enter a valid email address",
+  phone:v=>/^\+?[\d\s-]{10,15}$/.test(v)&&v.replace(/\D/g,"").length>=10||"Enter a 10-digit phone number",
+  addr:v=>v.length>=5||"Enter your street address",
+  city:v=>v.length>=2||"Enter your city",
+  zip:v=>/^[A-Za-z0-9 -]{4,12}$/.test(v)||"Enter a valid PIN / ZIP"
+};
+function check(name){
+  const el=form.elements[name],r=rules[name](el.value.trim());
+  el.classList.toggle("bad",r!==true);
+  form.querySelector(`[data-for="${name}"]`).textContent=r===true?"":r;
+  return r===true}
+for(const k in rules)form.elements[k].addEventListener("blur",()=>check(k));
+for(const k in rules)form.elements[k].addEventListener("input",()=>{if(form.elements[k].classList.contains("bad"))check(k)});
+{const s=store.get("contact",{});for(const k in s)if(form.elements[k]&&typeof s[k]==="string")form.elements[k].value=s[k]}
+
+/* ----- pay ----- */
+// Loads Razorpay's checkout script when needed (and retries), so one failed page-load fetch can't block payment.
+function loadRazorpay(){
+  if(window.Razorpay)return Promise.resolve();
+  return new Promise((ok,fail)=>{
+    const tryLoad=n=>{
+      const el=document.createElement("script");el.src="https://checkout.razorpay.com/v1/checkout.js";
+      el.onload=()=>window.Razorpay?ok():fail(new Error("Razorpay did not start."));
+      el.onerror=()=>{el.remove();n>0?setTimeout(()=>tryLoad(n-1),600):fail(new Error("Could not load the Razorpay payment window. Check your connection or disable ad/script blockers, then try again."))};
+      document.head.appendChild(el)};
+    tryLoad(2)})}
+if(!DEMO)loadRazorpay().catch(()=>{}); // warm up so the window opens instantly on click
+const showErr=m=>{const b=$("payErr");b.textContent=m||"";b.hidden=!m;if(m)b.scrollIntoView({block:"nearest",behavior:"smooth"})};
+
+/* ----- demo payment (no Razorpay, no server) ----- */
+const dp=$("demoPay"),dpErr=$("dpErr");
+let dpTab="card",dpCustomer=null;
+if(DEMO){$("demoBar").hidden=false;document.title="Checkout (demo) | Needverse"}
+dp.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{dpTab=b.dataset.t;dpErr.textContent="";
+  dp.querySelectorAll(".tabs button").forEach(x=>x.classList.toggle("on",x===b));
+  dp.querySelectorAll("[data-p]").forEach(x=>x.hidden=x.dataset.p!==dpTab)});
+$("dpCard").oninput=e=>{e.target.value=e.target.value.replace(/\D/g,"").slice(0,16).replace(/(.{4})/g,"$1 ").trim()};
+$("dpExp").oninput=e=>{let v=e.target.value.replace(/\D/g,"").slice(0,4);if(v.length>2)v=v.slice(0,2)+"/"+v.slice(2);e.target.value=v};
+$("dpCvv").oninput=e=>{e.target.value=e.target.value.replace(/\D/g,"")};
+function dpValidate(){
+  if(dpTab==="card"){
+    const n=$("dpCard").value.replace(/\s/g,""),[mm,yy]=$("dpExp").value.split("/");
+    if(n.length!==16)return"Enter the 16-digit card number.";
+    const m=+mm,y=2000+ +yy,now=new Date();
+    if(!(m>=1&&m<=12)||!yy||yy.length!==2||y<now.getFullYear()||(y===now.getFullYear()&&m<now.getMonth()+1))return"Enter a valid, future expiry (MM/YY).";
+    if($("dpCvv").value.length<3)return"Enter the 3-digit CVV.";
+  }else if(dpTab==="upi"){
+    if(!/^[\w.-]{2,}@[A-Za-z]{2,}$/.test($("dpUpi").value.trim()))return"Enter a UPI ID like name@bank.";
+  }
+  return""}
+function dpOutcome(){
+  if(dpTab==="card"&&$("dpCard").value.replace(/\s/g,"").endsWith("0002"))return"Payment declined by the bank (demo).";
+  if(dpTab==="upi"&&/^fail@/i.test($("dpUpi").value.trim()))return"UPI payment failed (demo).";
+  return""}
+function demoPayment(f){
+  dpCustomer=f;dpErr.textContent="";$("dpForm").reset();
+  dp.querySelector('.tabs button[data-t="card"]').click();
+  const amt=money(totals().total);$("dpAmt").textContent=amt;$("dpPayAmt").textContent="· "+amt;
+  dp.showModal()}
+$("dpCancel").onclick=()=>{dp.close();busy(false);showErr("Payment window closed. Your cart is saved. Press Pay to try again.")};
+dp.addEventListener("cancel",e=>{e.preventDefault();$("dpCancel").click()});
+$("dpForm").onsubmit=async e=>{e.preventDefault();
+  const bad=dpValidate();if(bad){dpErr.textContent=bad;return}
+  const pb=$("dpPay"),html=pb.innerHTML;pb.disabled=true;pb.innerHTML='<span class="spin"></span> Processing…';
+  await new Promise(r=>setTimeout(r,1500));
+  const fail=dpOutcome();
+  pb.disabled=false;pb.innerHTML=html;
+  if(fail){dpErr.textContent=fail+" Try another method or the test card above.";return}
+  const total=totals().total,f=dpCustomer;
+  const ref="DEMO-"+Array.from(crypto.getRandomValues(new Uint8Array(3)),b=>b.toString(16).padStart(2,"0")).join("").toUpperCase();
+  dp.close();store.set("lastOrder",cart);cart={};promo=null;save();
+  $("doneRef").textContent=ref;
+  $("doneMsg").textContent=`Thanks ${f.name.split(" ")[0]}! This was a demo payment of ${money(total)}. No money was charged and no order was placed.`;
+  $("page").hidden=true;$("done").hidden=false;busy(false);scrollTo(0,0)};
+const btn=$("payBtn"),btnHtml=btn.innerHTML;
+const busy=on=>{btn.disabled=on;btn.innerHTML=on?'<span class="spin"></span> Processing…':btnHtml;if(!on)$("payTotal").textContent=money(totals().total)};
+form.onsubmit=async e=>{e.preventDefault();
+  const bad=Object.keys(rules).filter(k=>!check(k));
+  if(bad.length){form.elements[bad[0]].focus();return toast("Please fix the highlighted fields")}
+  const f=Object.fromEntries(Object.keys(rules).map(k=>[k,form.elements[k].value.trim()]));
+  store.set("contact",f);
+  busy(true);showErr("");
+  if(DEMO)return demoPayment(f);
+  try{
+    await loadRazorpay();
+    const r=await fetch("/api/create-order",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({cart,promo,customer:f,vehicle})});
+    const o=await r.json().catch(()=>({}));
+    if(!r.ok)throw new Error(o.error||`Could not start payment (server error ${r.status}). Open /api/health on your site to see what is misconfigured.`);
+    const paidCart=cart;
+    const rz=new Razorpay({key:o.key,amount:o.amount,currency:o.currency,name:"Needverse",description:"Order "+o.ref,order_id:o.orderId,
+      prefill:{name:f.name,email:f.email,contact:f.phone},theme:{color:"#ff4d1a"},
+      modal:{ondismiss:()=>{busy(false);showErr("Payment window closed. Your cart is saved. Press Pay to try again.")}},
+      handler:async resp=>{
+        try{
+          const v=await fetch("/api/verify-payment",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(resp)});
+          const d=await v.json().catch(()=>({}));if(!v.ok)throw new Error(d.error||"Verification failed.");
+          store.set("lastOrder",paidCart);
+          cart={};promo=null;save();
+          $("doneRef").textContent=d.ref;
+          $("doneMsg").textContent=`Thanks ${f.name.split(" ")[0]}! We received ${money(d.amount)}. A receipt is on its way to ${f.email}.`;
+          $("page").hidden=true;$("done").hidden=false;scrollTo(0,0);
+        }catch(err){
+          busy(false);
+          showErr(`${err.message} If you were charged, contact us with payment id ${resp.razorpay_payment_id}.`)}}});
+    rz.on("payment.failed",x=>{busy(false);showErr(x.error?.description||"Payment failed. Please try again.")});
+    rz.open();
+  }catch(err){busy(false);showErr(err.message)}};
+
+if(Object.keys(cart).length){$("page").hidden=false;renderSummary()}else $("empty").hidden=false;
+</script>
+</body>
+</html>
