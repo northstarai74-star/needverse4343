@@ -15,6 +15,8 @@ if (!paymentsReady) console.error("Missing Razorpay keys: set RAZORPAY_KEY_ID an
 const rzp = paymentsReady ? new Razorpay({ key_id: RAZORPAY_KEY_ID, key_secret: RAZORPAY_KEY_SECRET }) : null;
 const app = express();
 const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
+// Razorpay errors look like { statusCode, error: { description } }. The description is safe to show (e.g. "Authentication failed").
+const rzpReason = (err) => String(err?.error?.description || err?.message || "unknown error").slice(0, 160);
 const needPayments = (req, res, next) => paymentsReady ? next() : res.status(503).json({ error: "Payments aren't set up yet. Please try again later." });
 
 // Marks an order paid and sends the confirmation email. Called by both the browser callback and
@@ -136,17 +138,27 @@ app.post("/api/create-order", needPayments, wrap(async (req, res) => {
   const amount = Math.round(t.total * 100); // paise
   const ref = "NV-" + crypto.randomBytes(3).toString("hex").toUpperCase();
 
-  const order = await rzp.orders.create({
-    amount, currency: STORE.currency, receipt: ref,
-    notes: { ref, name: clip(c.name, 60), email: clip(c.email, 80) }
-  });
+  // Each step reports its own reason, so "Could not start payment" says what to fix. Only short, non-secret text goes to the browser.
+  let order;
+  try {
+    order = await rzp.orders.create({
+      amount, currency: STORE.currency, receipt: ref,
+      notes: { ref, name: clip(c.name, 60), email: clip(c.email, 80) }
+    });
+  } catch (err) {
+    console.error("create-order: Razorpay refused the order:", err.error || err);
+    return res.status(502).json({ error: `Could not start payment. Razorpay said: ${rzpReason(err)}` });
+  }
 
-  await db.insertOrder(order.id, {
+  try { await db.insertOrder(order.id, {
     ref, status: "created", amount: t.total, currency: STORE.currency, cart, promo,
     customer: { name: clip(c.name, 100), email: clip(c.email, 120), phone: clip(c.phone, 20), addr: clip(c.addr, 200), city: clip(c.city, 80), zip: clip(c.zip, 12) },
     vehicle: req.body.vehicle && typeof req.body.vehicle === "object"
       ? { make: clip(req.body.vehicle.make ?? "", 40), model: clip(req.body.vehicle.model ?? "", 40), year: clip(req.body.vehicle.year ?? "", 4) } : null
-  });
+  }); } catch (err) {
+    console.error("create-order: could not save the order:", err.message);
+    return res.status(500).json({ error: "Could not start payment. The order could not be saved to the database. The shop owner can check /api/health." });
+  }
 
   res.json({ key: RAZORPAY_KEY_ID, orderId: order.id, amount, currency: STORE.currency, ref });
 }));
@@ -299,11 +311,16 @@ app.get("/api/health", wrap(async (req, res) => {
   let database = "ok";
   try { await db.check(); } catch (err) { database = err.message; }
   if (/fetch failed/i.test(database)) database = await whyUnreachable(process.env.SUPABASE_URL);
-  const ok = database === "ok" && paymentsReady;
+  let payments = paymentsReady ? (RAZORPAY_KEY_ID.startsWith("rzp_live_") ? "ok (live keys)" : "ok (test keys)") : "missing RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET";
+  if (paymentsReady) {
+    try { await Promise.race([rzp.orders.all({ count: 1 }), new Promise((_, no) => setTimeout(() => no(new Error("timed out talking to Razorpay")), 8000))]); }
+    catch (err) { payments = `keys are set but Razorpay rejected them: ${rzpReason(err)}. Check KEY_ID and KEY_SECRET are from the same account and mode.`; }
+  }
+  const ok = database === "ok" && payments.startsWith("ok");
   res.set("Cache-Control", "no-store").status(ok ? 200 : 503).json({
     ok,
     database,
-    payments: paymentsReady ? (RAZORPAY_KEY_ID.startsWith("rzp_live_") ? "ok (live keys)" : "ok (test keys)") : "missing RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET",
+    payments,
     webhook: RAZORPAY_WEBHOOK_SECRET ? "ok" : "not set (optional: RAZORPAY_WEBHOOK_SECRET)",
     admin: ADMIN_PASSWORD ? "ok" : "disabled (set ADMIN_PASSWORD)",
     emails: emailEnabled ? "ok" : "disabled (set SMTP_HOST, SMTP_USER, SMTP_PASS)"
