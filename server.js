@@ -8,14 +8,14 @@ const { sendOrderEmails, sendShippedEmail, sendRefundEmail, emailEnabled } = req
 const db = require("./db");
 
 const { RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, RAZORPAY_WEBHOOK_SECRET, ADMIN_USER = "admin", ADMIN_PASSWORD, PORT = 3000 } = process.env;
-if (!RAZORPAY_KEY_ID || !RAZORPAY_KEY_SECRET) {
-  console.error("\nMissing Razorpay keys. Copy .env.example to .env and fill in RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET.\n");
-  process.exit(1);
-}
+// Without keys the storefront still loads; only the payment routes refuse (see needPayments).
+const paymentsReady = Boolean(RAZORPAY_KEY_ID && RAZORPAY_KEY_SECRET);
+if (!paymentsReady) console.error("Missing Razorpay keys: set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET (.env locally, Environment Variables on Vercel).");
 
-const rzp = new Razorpay({ key_id: RAZORPAY_KEY_ID, key_secret: RAZORPAY_KEY_SECRET });
+const rzp = paymentsReady ? new Razorpay({ key_id: RAZORPAY_KEY_ID, key_secret: RAZORPAY_KEY_SECRET }) : null;
 const app = express();
 const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
+const needPayments = (req, res, next) => paymentsReady ? next() : res.status(503).json({ error: "Payments aren't set up yet. Please try again later." });
 
 // Marks an order paid and sends the confirmation email. Called by both the browser callback and
 // the webhook. The "claim" below is an atomic database update, so only one caller sends the email.
@@ -107,6 +107,8 @@ app.post("/api/razorpay-webhook", express.raw({ type: "*/*", limit: "200kb" }), 
 
 app.use(express.json({ limit: "50kb" }));
 app.use(express.static(path.join(__dirname, "public")));
+// Explicit route so "/" works on Vercel, where express.static is skipped in favour of its CDN.
+app.get("/", (req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
 
 // Validate the cart coming from the browser; prices are never taken from the client.
 function cleanCart(input) {
@@ -120,7 +122,7 @@ function cleanCart(input) {
   return Object.keys(cart).length ? cart : null;
 }
 
-app.post("/api/create-order", wrap(async (req, res) => {
+app.post("/api/create-order", needPayments, wrap(async (req, res) => {
   const cart = cleanCart(req.body.cart);
   if (!cart) return res.status(400).json({ error: "Your cart is empty or invalid." });
   const promo = typeof req.body.promo === "string" && STORE.promos[req.body.promo] ? req.body.promo : null;
@@ -148,7 +150,7 @@ app.post("/api/create-order", wrap(async (req, res) => {
   res.json({ key: RAZORPAY_KEY_ID, orderId: order.id, amount, currency: STORE.currency, ref });
 }));
 
-app.post("/api/verify-payment", wrap(async (req, res) => {
+app.post("/api/verify-payment", needPayments, wrap(async (req, res) => {
   const { razorpay_order_id: oid, razorpay_payment_id: pid, razorpay_signature: sig } = req.body || {};
   if (typeof oid !== "string" || typeof pid !== "string" || typeof sig !== "string")
     return res.status(400).json({ error: "Missing payment details." });
@@ -224,7 +226,7 @@ app.post("/api/admin/orders/:id/fulfillment", adminAuth, wrap(async (req, res) =
 
 // Refund through Razorpay. Omit "amount" for a full refund of whatever is left.
 const refundLock = new Set(); // stops a double-click from sending two refunds
-app.post("/api/admin/orders/:id/refund", adminAuth, wrap(async (req, res) => {
+app.post("/api/admin/orders/:id/refund", adminAuth, needPayments, wrap(async (req, res) => {
   const id = req.params.id;
   if (refundLock.has(id)) return res.status(409).json({ error: "A refund for this order is already in progress." });
   refundLock.add(id);
@@ -279,7 +281,10 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: req.path === "/api/create-order" ? "Could not start payment. Please try again." : "Something went wrong. Please try again." });
 });
 
-db.check().then(() => {
+// Vercel imports this file and calls the exported app per request; "node server.js" runs it as a normal server.
+module.exports = app;
+
+if (require.main === module) db.check().then(() => {
   app.listen(PORT, () => {
     console.log(`Needverse running at http://localhost:${PORT}`);
     console.log(`Database: Supabase connected`);
