@@ -274,6 +274,21 @@ app.get("/api/admin/orders.csv", adminAuth, wrap(async (req, res) => {
   res.type("text/csv").attachment("orders.csv").send(rows.map((r) => r.map(q).join(",")).join("\n"));
 }));
 
+// Setup check for the owner: open /api/health after a deploy. Reports what is configured, never the values.
+app.get("/api/health", wrap(async (req, res) => {
+  let database = "ok";
+  try { await db.check(); } catch (err) { database = err.message; }
+  const ok = database === "ok" && paymentsReady;
+  res.set("Cache-Control", "no-store").status(ok ? 200 : 503).json({
+    ok,
+    database,
+    payments: paymentsReady ? (RAZORPAY_KEY_ID.startsWith("rzp_live_") ? "ok (live keys)" : "ok (test keys)") : "missing RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET",
+    webhook: RAZORPAY_WEBHOOK_SECRET ? "ok" : "not set (optional: RAZORPAY_WEBHOOK_SECRET)",
+    admin: ADMIN_PASSWORD ? "ok" : "disabled (set ADMIN_PASSWORD)",
+    emails: emailEnabled ? "ok" : "disabled (set SMTP_HOST, SMTP_USER, SMTP_PASS)"
+  });
+}));
+
 // Anything that throws inside a route lands here. Customers never see internal details.
 app.use((err, req, res, next) => {
   console.error(`${req.method} ${req.path}:`, err.error || err);
