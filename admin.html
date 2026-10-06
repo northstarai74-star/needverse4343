@@ -46,10 +46,20 @@ dialog h2{margin:0 0 4px;font:800 1.8rem/1 "Barlow Condensed",sans-serif;text-tr
 dialog label{display:block;margin-top:12px;font-size:.75rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
 dialog input{display:block;width:100%;margin-top:5px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;outline:0;text-transform:none;letter-spacing:0;font-weight:400;font-size:.95rem}
 dialog input:focus{border-color:var(--accent)}
-.flash{position:fixed;left:50%;bottom:24px;translate:-50% 100px;color:#111;font-weight:600;padding:12px 22px;border-radius:99px;opacity:0;transition:.3s;z-index:9;max-width:92vw}
+.flash{position:fixed;left:50%;bottom:24px;translate:-50% 100px;font-weight:600;padding:12px 22px;border-radius:99px;opacity:0;transition:.3s;z-index:9;max-width:92vw;display:flex;align-items:center;gap:12px}
 .flash.show{translate:-50% 0;opacity:1}
+.flash.ok{background:var(--ok);color:#111}
+.flash.warn{background:var(--warn);color:#111}
+.flash.bad{background:var(--bad);color:#fff}
+.flash.info{background:var(--blue);color:#fff}
+.spinner{display:inline-block;width:16px;height:16px;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.btn:disabled,.btn[disabled]{opacity:.5;cursor:not-allowed}
+.btn.loading{position:relative;color:transparent}
+.btn.loading::after{content:"";position:absolute;left:50%;top:50%;width:14px;height:14px;margin-left:-7px;margin-top:-7px;border:2px solid currentColor;border-top-color:rgba(255,255,255,.3);border-radius:50%;animation:spin .6s linear infinite}
 .empty{text-align:center;padding:60px;color:var(--muted)}
 .right{text-align:right}
+.error{color:var(--bad);font-size:.85rem;margin:4px 0 0}
 @media (max-width:760px){.stats{grid-template-columns:1fr 1fr}.dbox{grid-template-columns:1fr}th:nth-child(2),td:nth-child(2),th:nth-child(6),td:nth-child(6){display:none}td,th{padding:10px}}
 </style>
 </head>
@@ -92,16 +102,32 @@ dialog input:focus{border-color:var(--accent)}
 <script>
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-let data=[],sym="₹",open=null;
+let data=[],sym="₹",open=null,isLoading=false;
 const money=n=>sym+Number(n).toLocaleString("en-IN",{maximumFractionDigits:2});
 const ful=o=>o.fulfillment||"new";
 const payPill=o=>o.status!=="paid"?'<span class="pill created">Unpaid</span>':(o.refunded||0)>=o.amount?'<span class="pill refunded">Refunded</span>':(o.refunded||0)>0?'<span class="pill part">Part refunded</span>':'<span class="pill paid">Paid</span>';
 const left=o=>Math.round((o.amount-(o.refunded||0))*100)/100;
 
+function setLoading(loading){isLoading=loading;const btn=$("refresh");if(loading){btn.disabled=true;btn.classList.add("loading");btn.textContent="Loading…"}else{btn.disabled=false;btn.classList.remove("loading");btn.textContent="Refresh"}}
+
 async function load(){
-  const r=await fetch("/api/admin/orders");
-  if(!r.ok){$("rows").innerHTML=`<tr><td colspan="7" class="empty">Could not load orders (${r.status}).</td></tr>`;return}
-  const j=await r.json();data=j.orders;sym=j.symbol;render();
+  setLoading(true);
+  try{
+    const controller=new AbortController();
+    const timeout=setTimeout(()=>controller.abort(),10000);
+    const r=await fetch("/api/admin/orders",{signal:controller.signal});
+    clearTimeout(timeout);
+    if(!r.ok){
+      const msg=r.status===401?"Authentication failed. Refresh page to login.":r.status===503?"Server is starting up. Refresh in a moment.":"Could not load orders (HTTP "+r.status+")";
+      $("rows").innerHTML=`<tr><td colspan="7" class="empty">${msg}</td></tr>`;
+      flash(msg,"bad");return
+    }
+    const j=await r.json();data=j.orders;sym=j.symbol;render();
+  }catch(err){
+    const msg=err.name==="AbortError"?"Loading timed out (10s). Check your connection.":"Network error: "+err.message;
+    $("rows").innerHTML=`<tr><td colspan="7" class="empty">${msg}</td></tr>`;
+    flash(msg,"bad");
+  }finally{setLoading(false)}
 }
 function refundBox(o){
   if(o.status!=="paid"||!o.paymentId)return"";
@@ -137,35 +163,105 @@ function render(){
 $("rows").onclick=async e=>{
   const rb=e.target.closest("[data-refund]");
   if(rb){const id=rb.dataset.refund,o=data.find(x=>x.orderId===id);
-    const a=document.getElementById("rAmt-"+id).value,why=document.getElementById("rWhy-"+id).value;
+    const amtInput=document.getElementById("rAmt-"+id),whyInput=document.getElementById("rWhy-"+id);
+    const a=amtInput.value,why=whyInput.value;
     const amt=a===""?left(o):Number(a);
-    if(!confirm(`Refund ${money(amt)} to ${o.customer.name} for order ${o.ref}?
-This sends the money back through Razorpay and cannot be undone.`))return;
-    rb.disabled=true;rb.textContent="Refunding…";
-    const r=await fetch(`/api/admin/orders/${encodeURIComponent(id)}/refund`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({amount:a===""?undefined:Number(a),reason:why})});
-    const j=await r.json().catch(()=>({}));
-    if(!r.ok)flash(j.error||"Refund failed",true);else flash(`Refund of ${money(j.refund.amount)} ${j.refund.status==="processed"?"processed":"started"}. Customer emailed.`);
-    await load();return}
+    if(isNaN(amt)||amt<=0){flash("Please enter a valid amount","bad");return}
+    if(!confirm(`Refund ${money(amt)} to ${o.customer.name} for order ${o.ref}?\n\nThis sends the money back through Razorpay and cannot be undone.`))return;
+    rb.disabled=true;rb.classList.add("loading");rb.textContent="Refunding…";
+    try{
+      const controller=new AbortController();
+      const timeout=setTimeout(()=>controller.abort(),15000);
+      const r=await fetch(`/api/admin/orders/${encodeURIComponent(id)}/refund`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({amount:a===""?undefined:Number(a),reason:why}),signal:controller.signal});
+      clearTimeout(timeout);
+      const j=await r.json().catch(()=>({}));
+      if(!r.ok){
+        const msg=j.error||"Refund failed ("+r.status+")";
+        flash(msg,"bad");
+      }else{
+        const msg=`Refund of ${money(j.refund.amount)} ${j.refund.status==="processed"?"processed":"pending"}.${j.emailed?" Customer emailed.":j.emailError?" ⚠️ "+j.emailError:""}`;
+        flash(msg,j.emailError?"warn":"ok");
+      }
+      await load();
+    }catch(err){
+      const msg=err.name==="AbortError"?"Refund timed out (15s). Try again.":"Refund error: "+err.message;
+      flash(msg,"bad");
+      rb.disabled=false;rb.classList.remove("loading");rb.textContent="Refund";
+    }
+    return}
   if(e.target.closest("select")||e.target.closest("input"))return;const tr=e.target.closest("tr.row");if(!tr)return;open=open===tr.dataset.id?null:tr.dataset.id;render()};
 async function setStatus(id,status,tracking){
-  const r=await fetch(`/api/admin/orders/${encodeURIComponent(id)}/fulfillment`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({status,tracking})});
-  const j=await r.json().catch(()=>({}));
-  if(!r.ok)alert(j.error||"Could not update status");
-  else if(status==="shipped")flash(j.emailed?"Marked shipped. Customer emailed.":j.emailError?"Marked shipped, but: "+j.emailError:"Marked shipped (customer was already emailed).",!!j.emailError);
-  await load()}
+  try{
+    const controller=new AbortController();
+    const timeout=setTimeout(()=>controller.abort(),12000);
+    const r=await fetch(`/api/admin/orders/${encodeURIComponent(id)}/fulfillment`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({status,tracking}),signal:controller.signal});
+    clearTimeout(timeout);
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok){
+      const msg=j.error||"Could not update status ("+r.status+")";
+      flash(msg,"bad");
+      return
+    }
+    if(status==="shipped"){
+      if(j.alreadyEmailed)flash("Marked shipped (customer already emailed)","info");
+      else if(j.emailError)flash("Marked shipped, but email failed: "+j.emailError,"warn");
+      else flash("Marked shipped. Customer emailed.","ok");
+    }else{
+      flash(`Status updated to ${status}.`,"ok");
+    }
+    await load();
+  }catch(err){
+    const msg=err.name==="AbortError"?"Status update timed out (12s). Try again.":"Status update error: "+err.message;
+    flash(msg,"bad");
+  }
+}
 let shipId=null;
 $("rows").onchange=e=>{const id=e.target.dataset.ful;if(!id)return;
   if(e.target.value!=="shipped")return setStatus(id,e.target.value);
   const o=data.find(x=>x.orderId===id),t=o.tracking||{};
   shipId=id;$("shipRef").textContent=o.ref+" · "+o.customer.email;
   $("tCarrier").value=t.carrier||"";$("tNumber").value=t.number||"";$("tUrl").value=t.url||"";
-  $("shipNote").textContent=o.shippedEmailSent?"The customer was already emailed for this order; no second email will be sent.":"The customer will get a \"your order has shipped\" email.";
+  $("shipNote").textContent=o.shippedEmailSent?"✓ Customer was already emailed for this order; no second email will be sent.":"📧 Customer will receive a shipping confirmation email.";
   $("shipDlg").showModal()};
-$("shipCancel").onclick=()=>{$("shipDlg").close();load()};
-$("shipDlg").addEventListener("cancel",()=>load());
-$("shipForm").onsubmit=async e=>{e.preventDefault();$("shipDlg").close();
-  await setStatus(shipId,"shipped",{carrier:$("tCarrier").value,number:$("tNumber").value,url:$("tUrl").value})};
-let ft;function flash(m,bad){const t=$("flash");t.textContent=m;t.style.background=bad?"var(--warn)":"var(--ok)";t.classList.add("show");clearTimeout(ft);ft=setTimeout(()=>t.classList.remove("show"),5000)}
+$("shipCancel").onclick=()=>{$("shipDlg").close()};
+$("shipDlg").addEventListener("cancel",()=>{});
+$("shipForm").onsubmit=async e=>{
+  e.preventDefault();
+  const submitBtn=e.target.querySelector('button[type="submit"]');
+  submitBtn.disabled=true;
+  submitBtn.classList.add("loading");
+  const origText=submitBtn.textContent;
+  submitBtn.textContent="Marking shipped…";
+  try{
+    $("shipDlg").close();
+    await setStatus(shipId,"shipped",{carrier:$("tCarrier").value,number:$("tNumber").value,url:$("tUrl").value});
+  }finally{
+    submitBtn.disabled=false;
+    submitBtn.classList.remove("loading");
+    submitBtn.textContent=origText;
+  }
+};
+let ft;function flash(m,type="ok"){
+  const t=$("flash");
+  t.textContent="";
+  t.className="flash";
+  const typeMap={ok:"ok",bad:"bad",warn:"warn",info:"info"};
+  const cls=typeMap[type]||"ok";
+  t.classList.add("show",cls);
+
+  if(cls==="bad"||cls==="warn"){
+    const icon=cls==="bad"?"❌":"⚠️";
+    t.innerHTML=`<span>${icon}</span><span>${m}</span>`;
+  }else if(cls==="info"){
+    t.innerHTML=`<span>ℹ️</span><span>${m}</span>`;
+  }else{
+    t.innerHTML=`<span>✓</span><span>${m}</span>`;
+  }
+
+  const duration=cls==="bad"?6000:cls==="warn"?5500:5000;
+  clearTimeout(ft);
+  ft=setTimeout(()=>t.classList.remove("show"),duration)
+}
 ["q","fPay","fFul"].forEach(i=>$(i).addEventListener("input",render));
 $("refresh").onclick=load;
 load();setInterval(()=>{if(!document.hidden&&!document.activeElement.matches("select,input"))load()},30000);
