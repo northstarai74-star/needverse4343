@@ -8,15 +8,20 @@ const { sendOrderEmails, sendShippedEmail, sendRefundEmail, emailEnabled } = req
 const db = require("./db");
 const jwt = require("jsonwebtoken");
 
-const { RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, RAZORPAY_WEBHOOK_SECRET, ADMIN_USER = "admin", ADMIN_PASSWORD, PORT = 3000, JWT_SECRET = "needverse-secret-key" } = process.env;
+const { RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, RAZORPAY_WEBHOOK_SECRET, ADMIN_USER = "admin", ADMIN_PASSWORD, PORT = 3000, JWT_SECRET } = process.env;
 // Without keys the storefront still loads; only the payment routes refuse (see needPayments).
 const paymentsReady = Boolean(RAZORPAY_KEY_ID && RAZORPAY_KEY_SECRET);
 if (!paymentsReady) console.error("Missing Razorpay keys: set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET (.env locally, Environment Variables on Vercel).");
+
+// Accounts need a private signing key; a public default would let anyone forge login tokens.
+const accountsReady = Boolean(JWT_SECRET);
+if (!accountsReady) console.error("Missing JWT_SECRET: customer accounts are disabled until it is set (any long random string).");
 
 const rzp = paymentsReady ? new Razorpay({ key_id: RAZORPAY_KEY_ID, key_secret: RAZORPAY_KEY_SECRET }) : null;
 const app = express();
 const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 const needPayments = (req, res, next) => paymentsReady ? next() : res.status(503).json({ error: "Payments aren't set up yet. Please try again later." });
+const needAccounts = (req, res, next) => accountsReady ? next() : res.status(503).json({ error: "Accounts aren't set up yet. Please try again later." });
 
 // Auth middleware
 function verifyToken(req, res, next) {
@@ -127,7 +132,7 @@ app.use(express.static(path.join(__dirname, "public")));
 app.get("/", (req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
 
 // Auth routes
-app.post("/api/auth/signup", wrap(async (req, res) => {
+app.post("/api/auth/signup", needAccounts, wrap(async (req, res) => {
   const { email, password, name } = req.body || {};
   if (!email || !password) return res.status(400).json({ error: "Email and password required" });
   if (password.length < 6) return res.status(400).json({ error: "Password must be at least 6 characters" });
@@ -140,7 +145,7 @@ app.post("/api/auth/signup", wrap(async (req, res) => {
   }
 }));
 
-app.post("/api/auth/signin", wrap(async (req, res) => {
+app.post("/api/auth/signin", needAccounts, wrap(async (req, res) => {
   const { email, password } = req.body || {};
   if (!email || !password) return res.status(400).json({ error: "Email and password required" });
   try {
@@ -152,7 +157,7 @@ app.post("/api/auth/signin", wrap(async (req, res) => {
   }
 }));
 
-app.get("/api/auth/me", verifyToken, wrap(async (req, res) => {
+app.get("/api/auth/me", needAccounts, verifyToken, wrap(async (req, res) => {
   const user = await db.getUser(req.user.userId);
   if (!user) return res.status(404).json({ error: "User not found" });
   res.json({ user });
@@ -181,7 +186,7 @@ app.post("/api/create-order", needPayments, wrap(async (req, res) => {
 
   let customer = {};
   // Use logged-in user data if available, otherwise use checkout form data
-  if (req.body.token) {
+  if (accountsReady && req.body.token) {
     try {
       const user = jwt.verify(req.body.token, JWT_SECRET);
       const userData = await db.getUser(user.userId);
@@ -387,6 +392,7 @@ app.get("/api/health", wrap(async (req, res) => {
     payments: paymentsReady ? (RAZORPAY_KEY_ID.startsWith("rzp_live_") ? "ok (live keys)" : "ok (test keys)") : "missing RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET",
     webhook: RAZORPAY_WEBHOOK_SECRET ? "ok" : "not set (optional: RAZORPAY_WEBHOOK_SECRET)",
     admin: ADMIN_PASSWORD ? "ok" : "disabled (set ADMIN_PASSWORD)",
+    accounts: accountsReady ? "ok" : "disabled (set JWT_SECRET)",
     emails: emailEnabled ? "ok" : "disabled (set SMTP_HOST, SMTP_USER, SMTP_PASS)"
   });
 }));

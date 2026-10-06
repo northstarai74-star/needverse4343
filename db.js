@@ -92,31 +92,45 @@ async function importOrder(orderId, o) {
 }
 
 // User authentication
-function hashPassword(password) {
-  return crypto.createHash("sha256").update(password + process.env.PASSWORD_SALT || "").digest("hex");
+// Stored as "scrypt$<salt>$<hash>" with a random salt per user.
+const scrypt = (password, salt) => new Promise((ok, no) => crypto.scrypt(password, salt, 64, (err, key) => err ? no(err) : ok(key)));
+
+async function hashPassword(password) {
+  const salt = crypto.randomBytes(16).toString("hex");
+  return `scrypt$${salt}$${(await scrypt(password, salt)).toString("hex")}`;
+}
+
+// Also accepts the old unsalted SHA-256 hashes, which signin upgrades to scrypt.
+async function checkPassword(password, stored) {
+  const [scheme, salt, hash] = String(stored).split("$");
+  const expected = scheme === "scrypt" ? Buffer.from(hash || "", "hex") : Buffer.from(String(stored), "hex");
+  const actual = scheme === "scrypt" ? await scrypt(password, salt)
+    : crypto.createHash("sha256").update(password + process.env.PASSWORD_SALT).digest();
+  return expected.length === actual.length && crypto.timingSafeEqual(expected, actual);
 }
 
 async function signup(email, password, name) {
+  email = String(email).trim().toLowerCase();
   const { data, error } = await sb.from("users").select("id").eq("email", email).maybeSingle();
   if (error) fail("check email", error);
   if (data) throw new Error("Email already registered");
 
   const id = crypto.randomBytes(8).toString("hex");
   const { error: err } = await sb.from("users").insert({
-    id, email: email.toLowerCase(), password_hash: hashPassword(password), name: name || ""
+    id, email, password_hash: await hashPassword(password), name: name || ""
   });
   if (err) fail("signup", err);
   return id;
 }
 
 async function signin(email, password) {
-  const { data, error } = await sb.from("users").select("id").eq("email", email.toLowerCase()).maybeSingle();
+  const { data: user, error } = await sb.from("users").select("*").eq("email", String(email).trim().toLowerCase()).maybeSingle();
   if (error) fail("signin lookup", error);
-  if (!data) throw new Error("Email not found");
-
-  const { data: user, error: err } = await sb.from("users").select("*").eq("id", data.id).maybeSingle();
-  if (err) fail("signin fetch", err);
-  if (!user || user.password_hash !== hashPassword(password)) throw new Error("Invalid password");
+  if (!user || !(await checkPassword(password, user.password_hash))) throw new Error("Invalid email or password");
+  if (!user.password_hash.startsWith("scrypt$")) {
+    const { error: err } = await sb.from("users").update({ password_hash: await hashPassword(password) }).eq("id", user.id);
+    if (err) console.error("Could not upgrade password hash for user", user.id, "-", err.message);
+  }
 
   return { id: user.id, email: user.email, name: user.name, phone: user.phone, addr: user.addr, city: user.city, zip: user.zip };
 }
