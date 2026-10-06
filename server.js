@@ -6,6 +6,18 @@ const Razorpay = require("razorpay");
 const { STORE, byId, computeTotals } = require("./public/catalog.js");
 const { sendOrderEmails, sendShippedEmail, sendRefundEmail, emailEnabled } = require("./mailer");
 const db = require("./db");
+const {
+  adminLoginLimiter,
+  apiLimiter,
+  webhookLimiter,
+  securityHeaders,
+  generateCsrfToken,
+  verifyPassword,
+  validateEmail,
+  validatePhone,
+  sanitizeHtml,
+  secureLogger,
+} = require("./security");
 
 const { RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, RAZORPAY_WEBHOOK_SECRET, ADMIN_USER = "admin", ADMIN_PASSWORD, PORT = 3000 } = process.env;
 // Without keys the storefront still loads; only the payment routes refuse (see needPayments).
@@ -16,6 +28,13 @@ const rzp = paymentsReady ? new Razorpay({ key_id: RAZORPAY_KEY_ID, key_secret: 
 const app = express();
 const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 const needPayments = (req, res, next) => paymentsReady ? next() : res.status(503).json({ error: "Payments aren't set up yet. Please try again later." });
+
+// Security middleware
+app.use(secureLogger);
+app.use(securityHeaders);
+app.use(apiLimiter);
+app.use(webhookLimiter);
+app.use(adminLoginLimiter);
 
 // Marks an order paid and sends the confirmation email. Called by both the browser callback and
 // the webhook. The "claim" below is an atomic database update, so only one caller sends the email.
@@ -129,6 +148,11 @@ app.post("/api/create-order", needPayments, wrap(async (req, res) => {
   const c = req.body.customer || {};
   if (!c.name || !c.email || !c.phone || !c.addr || !c.city || !c.zip)
     return res.status(400).json({ error: "Please fill in all checkout details." });
+
+  // Validate email and phone
+  if (!validateEmail(c.email)) return res.status(400).json({ error: "Invalid email address." });
+  if (!validatePhone(c.phone)) return res.status(400).json({ error: "Invalid phone number." });
+
   const clip = (v, n) => String(v).trim().slice(0, n);
 
   const t = computeTotals(cart, promo);
@@ -166,12 +190,22 @@ app.post("/api/verify-payment", needPayments, wrap(async (req, res) => {
 
 // ---------- Admin (orders page) ----------
 // Protected with HTTP Basic auth. Disabled unless ADMIN_PASSWORD is set.
-const same = (a, b) => { const x = crypto.createHash("sha256").update(String(a)).digest(), y = crypto.createHash("sha256").update(String(b)).digest(); return crypto.timingSafeEqual(x, y); };
-function adminAuth(req, res, next) {
+// Note: In production, consider session-based auth with HTTPS-only cookies
+async function adminAuth(req, res, next) {
   if (!ADMIN_PASSWORD) return res.status(503).send("Admin is disabled. Set ADMIN_PASSWORD in .env.");
   const [scheme, token] = (req.get("authorization") || "").split(" ");
   const [u, ...p] = scheme === "Basic" && token ? Buffer.from(token, "base64").toString().split(":") : [];
-  if (u !== undefined && same(u, ADMIN_USER) && same(p.join(":"), ADMIN_PASSWORD)) return next();
+
+  if (!u || !p.length) {
+    return res.set("WWW-Authenticate", 'Basic realm="Needverse admin"').status(401).send("Login required");
+  }
+
+  // Check username and password
+  const passwordMatch = u === ADMIN_USER && await verifyPassword(p.join(":"), ADMIN_PASSWORD);
+  if (passwordMatch) return next();
+
+  // Log failed attempt (sanitized)
+  console.warn(`Admin login attempt from ${req.ip} with user: ${u.substring(0, 3)}***`);
   res.set("WWW-Authenticate", 'Basic realm="Needverse admin"').status(401).send("Login required");
 }
 const FULFIL = ["new", "packed", "shipped", "delivered", "cancelled"];
