@@ -2,12 +2,24 @@
    Shared by the browser and the server; the server re-prices every order from this file. */
 const STORE={currency:"INR",symbol:"₹",freeShip:999,shipFee:99,promos:{SAVE10:.1,WELCOME5:.05}};
 const VEHICLES = {
-  Toyota:{Camry:[2018,2024],Corolla:[2016,2024],RAV4:[2016,2024],Hilux:[2016,2024]},
-  Honda:{Civic:[2016,2024],Accord:[2016,2024],"CR-V":[2016,2024]},
-  Ford:{Focus:[2012,2018],"F-150":[2015,2024],Escape:[2017,2024]},
-  Nissan:{Altima:[2016,2024],Rogue:[2016,2024],Sentra:[2016,2024]},
-  Hyundai:{Elantra:[2016,2024],Tucson:[2016,2024]},
-  BMW:{"3 Series":[2015,2024],X5:[2015,2024]}
+  Toyota:{Camry:[2018,2024],Corolla:[2016,2024],RAV4:[2016,2024],Hilux:[2016,2024],Fortuner:[2016,2024],"Innova Crysta":[2016,2024],Glanza:[2019,2024],"Urban Cruiser Hyryder":[2022,2024]},
+  Honda:{Civic:[2016,2024],Accord:[2016,2024],"CR-V":[2016,2024],City:[2016,2024],Amaze:[2016,2024],Elevate:[2023,2024]},
+  Ford:{Focus:[2012,2018],"F-150":[2015,2024],Escape:[2017,2024],EcoSport:[2013,2021],Endeavour:[2016,2022],Figo:[2015,2021]},
+  Nissan:{Altima:[2016,2024],Rogue:[2016,2024],Sentra:[2016,2024],Magnite:[2020,2024],Kicks:[2019,2022]},
+  Hyundai:{Elantra:[2016,2024],Tucson:[2016,2024],Creta:[2016,2024],Venue:[2019,2024],i20:[2016,2024],Verna:[2016,2024],"Grand i10 Nios":[2019,2024],Alcazar:[2021,2024]},
+  BMW:{"3 Series":[2015,2024],X5:[2015,2024],"5 Series":[2015,2024],X1:[2016,2024],X3:[2016,2024],"7 Series":[2016,2024]},
+  "Maruti Suzuki":{Swift:[2016,2024],Baleno:[2016,2024],Dzire:[2016,2024],Brezza:[2016,2024],Ertiga:[2016,2024],"Alto K10":[2016,2024],WagonR:[2016,2024],"Grand Vitara":[2022,2024],Fronx:[2023,2024],Jimny:[2023,2024]},
+  Tata:{Nexon:[2017,2024],Harrier:[2019,2024],Safari:[2021,2024],Punch:[2021,2024],Altroz:[2020,2024],Tiago:[2016,2024],Tigor:[2017,2024],Curvv:[2024,2024]},
+  Mahindra:{Thar:[2016,2024],"Scorpio-N":[2022,2024],"Scorpio Classic":[2016,2024],XUV700:[2021,2024],XUV300:[2019,2024],Bolero:[2016,2024],"XUV 3XO":[2024,2024]},
+  Kia:{Seltos:[2019,2024],Sonet:[2020,2024],Carens:[2022,2024],Carnival:[2020,2024],EV6:[2022,2024]},
+  Volkswagen:{Polo:[2016,2022],Virtus:[2022,2024],Taigun:[2021,2024],Vento:[2016,2022],Tiguan:[2017,2024]},
+  Skoda:{Slavia:[2022,2024],Kushaq:[2021,2024],Octavia:[2016,2024],Superb:[2016,2024],Kodiaq:[2017,2024],Rapid:[2016,2022]},
+  Renault:{Kwid:[2016,2024],Triber:[2019,2024],Kiger:[2021,2024],Duster:[2016,2022]},
+  MG:{Hector:[2019,2024],Astor:[2021,2024],Gloster:[2020,2024],"ZS EV":[2020,2024],"Comet EV":[2023,2024]},
+  Jeep:{Compass:[2017,2024],Meridian:[2022,2024],Wrangler:[2016,2024],"Grand Cherokee":[2016,2024]},
+  "Mercedes-Benz":{"C-Class":[2016,2024],"E-Class":[2016,2024],GLA:[2016,2024],GLC:[2016,2024],GLE:[2016,2024]},
+  Audi:{A4:[2016,2024],A6:[2016,2024],Q3:[2016,2024],Q5:[2016,2024],Q7:[2016,2024]},
+  Chevrolet:{Silverado:[2016,2024],Malibu:[2016,2024],Equinox:[2016,2024],Cruze:[2016,2018]}
 };
 const CATS = {
   Interior:{em:"💺",c:"#ff4d1a",sub:"Mats, covers, storage"},
@@ -17,12 +29,12 @@ const CATS = {
   Cleaning:{em:"✨",c:"#2ed3c6",sub:"Coatings, vacuums"},
   Utility:{em:"📦",c:"#3ddc84",sub:"Towing, cargo"}
 };
-const ALL = ["Toyota","Honda","Ford","Nissan","Hyundai","BMW"];
+const ALL = Object.keys(VEHICLES);
 const PRODUCTS = [
-  {id:1,name:"All-Weather Floor Mats (4-pc)",cat:"Interior",price:4399,rating:4.8,n:2140,pop:98,icon:"🧽",fits:["Toyota","Honda","Ford","Nissan","Hyundai"],desc:"Laser-fit, deep channels, easy rinse."},
+  {id:1,name:"All-Weather Floor Mats (4-pc)",cat:"Interior",price:4399,rating:4.8,n:2140,pop:98,icon:"🧽",fits:["Toyota","Honda","Ford","Nissan","Hyundai","Maruti Suzuki","Tata","Mahindra","Kia","Volkswagen","Skoda","Renault","MG","Jeep","Chevrolet"],desc:"Laser-fit, deep channels, easy rinse."},
   {id:2,name:"Front & Rear Dash Cam 2K",cat:"Electronics",price:7199,rating:4.7,n:1820,pop:95,icon:"📹",fits:"all",desc:"Loop recording, night vision, parking mode."},
   {id:3,name:"Wireless Phone Mount + Charger",cat:"Electronics",price:2799,rating:4.6,n:1510,pop:92,icon:"📱",fits:"all",desc:"15W fast charge, one-hand release."},
-  {id:4,name:"Breathable Mesh Seat Covers",cat:"Interior",price:6399,rating:4.5,n:640,pop:70,icon:"💺",fits:["Toyota","Honda","Nissan","Hyundai"],desc:"Airbag safe, fits in 10 minutes."},
+  {id:4,name:"Breathable Mesh Seat Covers",cat:"Interior",price:6399,rating:4.5,n:640,pop:70,icon:"💺",fits:["Toyota","Honda","Nissan","Hyundai","Maruti Suzuki","Tata","Kia","Volkswagen","Skoda","Renault","MG"],desc:"Airbag safe, fits in 10 minutes."},
   {id:5,name:"Windshield Sun Shade",cat:"Interior",price:1439,rating:4.6,n:980,pop:80,icon:"🌞",fits:"all",desc:"Reflective, folds into a door pocket."},
   {id:6,name:"Collapsible Trunk Organizer",cat:"Interior",price:2399,rating:4.7,n:1210,pop:85,icon:"🧳",fits:"all",desc:"3 compartments, non-slip base."},
   {id:7,name:"Jump Starter 2000A",cat:"Emergency",price:5599,rating:4.9,n:3020,pop:90,icon:"🔋",fits:"all",desc:"Starts up to 8L engines, doubles as a power bank."},
@@ -30,11 +42,11 @@ const PRODUCTS = [
   {id:9,name:"Emergency Roadside Kit",cat:"Emergency",price:3199,rating:4.6,n:720,pop:66,icon:"🚨",fits:"all",desc:"Triangles, first aid, gloves, tow strap."},
   {id:10,name:"LED Headlight Bulbs (pair)",cat:"Exterior",price:3999,rating:4.4,n:860,pop:75,icon:"💡",fits:ALL,desc:"6000K, plug-and-play, 3x brighter."},
   {id:11,name:"Silicone Wiper Blades (pair)",cat:"Exterior",price:1999,rating:4.5,n:1330,pop:82,icon:"🌧️",fits:ALL,desc:"Streak-free and quiet."},
-  {id:12,name:"Custom-Fit Mud Flaps",cat:"Exterior",price:3119,rating:4.3,n:310,pop:55,icon:"🛡️",fits:["Toyota","Ford","Nissan"],desc:"No drilling on most models."},
+  {id:12,name:"Custom-Fit Mud Flaps",cat:"Exterior",price:3119,rating:4.3,n:310,pop:55,icon:"🛡️",fits:["Toyota","Ford","Nissan","Maruti Suzuki","Tata","Mahindra","Kia","Jeep","Chevrolet","Renault","MG"],desc:"No drilling on most models."},
   {id:13,name:"Ceramic Coating Spray",cat:"Cleaning",price:1599,rating:4.7,n:2480,pop:89,icon:"✨",fits:"all",desc:"Months of shine in a 15-minute wipe-on."},
   {id:14,name:"Microfiber Towels (6-pack)",cat:"Cleaning",price:1199,rating:4.8,n:2900,pop:91,icon:"🧺",fits:"all",desc:"Scratch-free drying and buffing."},
   {id:15,name:"Portable Car Vacuum",cat:"Cleaning",price:2639,rating:4.5,n:1420,pop:84,icon:"🌀",fits:"all",desc:"Cordless with 3 nozzles."},
-  {id:16,name:"Tow Hitch Receiver Kit",cat:"Utility",price:9599,rating:4.6,n:210,pop:48,icon:"🔗",fits:["Toyota","Ford","Nissan"],desc:"Class III, bolt-on install."},
+  {id:16,name:"Tow Hitch Receiver Kit",cat:"Utility",price:9599,rating:4.6,n:210,pop:48,icon:"🔗",fits:["Toyota","Ford","Nissan","Maruti Suzuki","Tata","Mahindra","Kia","Jeep","Chevrolet","Renault","MG"],desc:"Class III, bolt-on install."},
   {id:17,name:"Roof Cargo Box 16 cu ft",cat:"Utility",price:19919,rating:4.4,n:180,pop:42,icon:"📦",fits:ALL,desc:"Dual-side opening, lockable."},
   {id:18,name:"OBD2 Bluetooth Scanner",cat:"Electronics",price:2239,rating:4.6,n:1090,pop:78,icon:"🔧",fits:"all",desc:"Read and clear codes from your phone."}
 ];
