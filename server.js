@@ -6,8 +6,9 @@ const Razorpay = require("razorpay");
 const { STORE, byId, computeTotals } = require("./public/catalog.js");
 const { sendOrderEmails, sendShippedEmail, sendRefundEmail, emailEnabled } = require("./mailer");
 const db = require("./db");
+const jwt = require("jsonwebtoken");
 
-const { RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, RAZORPAY_WEBHOOK_SECRET, ADMIN_USER = "admin", ADMIN_PASSWORD, PORT = 3000 } = process.env;
+const { RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, RAZORPAY_WEBHOOK_SECRET, ADMIN_USER = "admin", ADMIN_PASSWORD, PORT = 3000, JWT_SECRET = "needverse-secret-key" } = process.env;
 // Without keys the storefront still loads; only the payment routes refuse (see needPayments).
 const paymentsReady = Boolean(RAZORPAY_KEY_ID && RAZORPAY_KEY_SECRET);
 if (!paymentsReady) console.error("Missing Razorpay keys: set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET (.env locally, Environment Variables on Vercel).");
@@ -16,6 +17,21 @@ const rzp = paymentsReady ? new Razorpay({ key_id: RAZORPAY_KEY_ID, key_secret: 
 const app = express();
 const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 const needPayments = (req, res, next) => paymentsReady ? next() : res.status(503).json({ error: "Payments aren't set up yet. Please try again later." });
+
+// Auth middleware
+function verifyToken(req, res, next) {
+  const token = req.cookies?.auth_token || req.get("authorization")?.replace("Bearer ", "");
+  if (!token) return res.status(401).json({ error: "Not authenticated" });
+  try {
+    req.user = jwt.verify(token, JWT_SECRET);
+    next();
+  } catch (err) {
+    res.status(401).json({ error: "Invalid token" });
+  }
+}
+function createToken(userId) {
+  return jwt.sign({ userId }, JWT_SECRET, { expiresIn: "30d" });
+}
 
 // Marks an order paid and sends the confirmation email. Called by both the browser callback and
 // the webhook. The "claim" below is an atomic database update, so only one caller sends the email.
@@ -110,6 +126,42 @@ app.use(express.static(path.join(__dirname, "public")));
 // Explicit route so "/" works on Vercel, where express.static is skipped in favour of its CDN.
 app.get("/", (req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
 
+// Auth routes
+app.post("/api/auth/signup", wrap(async (req, res) => {
+  const { email, password, name } = req.body || {};
+  if (!email || !password) return res.status(400).json({ error: "Email and password required" });
+  if (password.length < 6) return res.status(400).json({ error: "Password must be at least 6 characters" });
+  try {
+    const userId = await db.signup(email, password, name);
+    const token = createToken(userId);
+    res.json({ ok: true, token, user: { id: userId, email, name } });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+}));
+
+app.post("/api/auth/signin", wrap(async (req, res) => {
+  const { email, password } = req.body || {};
+  if (!email || !password) return res.status(400).json({ error: "Email and password required" });
+  try {
+    const user = await db.signin(email, password);
+    const token = createToken(user.id);
+    res.json({ ok: true, token, user });
+  } catch (err) {
+    res.status(401).json({ error: err.message });
+  }
+}));
+
+app.get("/api/auth/me", verifyToken, wrap(async (req, res) => {
+  const user = await db.getUser(req.user.userId);
+  if (!user) return res.status(404).json({ error: "User not found" });
+  res.json({ user });
+}));
+
+app.post("/api/auth/logout", (req, res) => {
+  res.json({ ok: true });
+});
+
 // Validate the cart coming from the browser; prices are never taken from the client.
 function cleanCart(input) {
   const cart = {};
@@ -126,8 +178,38 @@ app.post("/api/create-order", needPayments, wrap(async (req, res) => {
   const cart = cleanCart(req.body.cart);
   if (!cart) return res.status(400).json({ error: "Your cart is empty or invalid." });
   const promo = typeof req.body.promo === "string" && STORE.promos[req.body.promo] ? req.body.promo : null;
+
+  let customer = {};
+  // Use logged-in user data if available, otherwise use checkout form data
+  if (req.body.token) {
+    try {
+      const user = jwt.verify(req.body.token, JWT_SECRET);
+      const userData = await db.getUser(user.userId);
+      if (userData) {
+        customer = {
+          name: userData.name || "",
+          email: userData.email || "",
+          phone: userData.phone || "",
+          addr: userData.addr || "",
+          city: userData.city || "",
+          zip: userData.zip || ""
+        };
+      }
+    } catch (err) {
+      // Token invalid, use form data
+    }
+  }
+
+  // Override with checkout form data if provided
   const c = req.body.customer || {};
-  if (!c.name || !c.email || !c.phone || !c.addr || !c.city || !c.zip)
+  if (c.name) customer.name = c.name;
+  if (c.email) customer.email = c.email;
+  if (c.phone) customer.phone = c.phone;
+  if (c.addr) customer.addr = c.addr;
+  if (c.city) customer.city = c.city;
+  if (c.zip) customer.zip = c.zip;
+
+  if (!customer.name || !customer.email || !customer.phone || !customer.addr || !customer.city || !customer.zip)
     return res.status(400).json({ error: "Please fill in all checkout details." });
   const clip = (v, n) => String(v).trim().slice(0, n);
 
@@ -137,12 +219,12 @@ app.post("/api/create-order", needPayments, wrap(async (req, res) => {
 
   const order = await rzp.orders.create({
     amount, currency: STORE.currency, receipt: ref,
-    notes: { ref, name: clip(c.name, 60), email: clip(c.email, 80) }
+    notes: { ref, name: clip(customer.name, 60), email: clip(customer.email, 80) }
   });
 
   await db.insertOrder(order.id, {
     ref, status: "created", amount: t.total, currency: STORE.currency, cart, promo,
-    customer: { name: clip(c.name, 100), email: clip(c.email, 120), phone: clip(c.phone, 20), addr: clip(c.addr, 200), city: clip(c.city, 80), zip: clip(c.zip, 12) },
+    customer: { name: clip(customer.name, 100), email: clip(customer.email, 120), phone: clip(customer.phone, 20), addr: clip(customer.addr, 200), city: clip(customer.city, 80), zip: clip(customer.zip, 12) },
     vehicle: req.body.vehicle && typeof req.body.vehicle === "object"
       ? { make: clip(req.body.vehicle.make ?? "", 40), model: clip(req.body.vehicle.model ?? "", 40), year: clip(req.body.vehicle.year ?? "", 4) } : null
   });

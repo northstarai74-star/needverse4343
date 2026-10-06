@@ -1,6 +1,7 @@
 // Orders storage on Supabase (Postgres). The rest of the app works with plain
 // camelCase order objects; this file maps them to and from table rows.
 const { createClient } = require("@supabase/supabase-js");
+const crypto = require("crypto");
 
 const { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } = process.env;
 const configured = Boolean(SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY);
@@ -90,4 +91,47 @@ async function importOrder(orderId, o) {
   if (error) fail("import", error);
 }
 
-module.exports = { configured, check, insertOrder, getOrder, findByPaymentId, listOrders, updateOrder, importOrder };
+// User authentication
+function hashPassword(password) {
+  return crypto.createHash("sha256").update(password + process.env.PASSWORD_SALT || "").digest("hex");
+}
+
+async function signup(email, password, name) {
+  const { data, error } = await sb.from("users").select("id").eq("email", email).maybeSingle();
+  if (error) fail("check email", error);
+  if (data) throw new Error("Email already registered");
+
+  const id = crypto.randomBytes(8).toString("hex");
+  const { error: err } = await sb.from("users").insert({
+    id, email: email.toLowerCase(), password_hash: hashPassword(password), name: name || ""
+  });
+  if (err) fail("signup", err);
+  return id;
+}
+
+async function signin(email, password) {
+  const { data, error } = await sb.from("users").select("id").eq("email", email.toLowerCase()).maybeSingle();
+  if (error) fail("signin lookup", error);
+  if (!data) throw new Error("Email not found");
+
+  const { data: user, error: err } = await sb.from("users").select("*").eq("id", data.id).maybeSingle();
+  if (err) fail("signin fetch", err);
+  if (!user || user.password_hash !== hashPassword(password)) throw new Error("Invalid password");
+
+  return { id: user.id, email: user.email, name: user.name, phone: user.phone, addr: user.addr, city: user.city, zip: user.zip };
+}
+
+async function getUser(userId) {
+  const { data, error } = await sb.from("users").select("*").eq("id", userId).maybeSingle();
+  if (error) fail("getUser", error);
+  if (!data) return null;
+  return { id: data.id, email: data.email, name: data.name, phone: data.phone, addr: data.addr, city: data.city, zip: data.zip };
+}
+
+async function updateUser(userId, updates) {
+  const { error } = await sb.from("users").update(updates).eq("id", userId);
+  if (error) fail("updateUser", error);
+  return getUser(userId);
+}
+
+module.exports = { configured, check, insertOrder, getOrder, findByPaymentId, listOrders, updateOrder, importOrder, signup, signin, getUser, updateUser };

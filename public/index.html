@@ -232,10 +232,15 @@ dialog input:focus{border-color:var(--accent)}
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
       <input id="search" type="search" placeholder="Search floor mats, dash cams…" aria-label="Search products">
     </label>
-    <button id="cartBtn" class="cartbtn" aria-label="Open cart">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6h15l-2 9H8L6 3H3"/><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/></svg>
-      Cart <b id="cartCount">0</b>
-    </button>
+    <div style="display:flex;gap:12px;align-items:center;margin-left:auto">
+      <button id="userBtn" class="btn ghost" style="font-size:.9rem" hidden>👤 <span id="userName"></span></button>
+      <button id="signinBtn" class="btn ghost" style="font-size:.9rem" onclick="openAuth('signin')">Sign in</button>
+      <button id="signupBtn" class="btn ghost" style="font-size:.9rem" onclick="openAuth('signup')">Sign up</button>
+      <button id="cartBtn" class="cartbtn" aria-label="Open cart">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6h15l-2 9H8L6 3H3"/><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/></svg>
+        Cart <b id="cartCount">0</b>
+      </button>
+    </div>
   </div>
 </nav>
 
@@ -327,10 +332,30 @@ dialog input:focus{border-color:var(--accent)}
   </div>
 </aside>
 
+<dialog id="auth">
+  <div id="authSign" hidden>
+    <h2>Create account</h2>
+    <form id="signupForm">
+      <label>Email<input name="email" type="email" autocomplete="email" required></label>
+      <label>Password<input name="password" type="password" autocomplete="new-password" required></label>
+      <label>Full name<input name="name" autocomplete="name" required></label>
+      <div class="acts"><button type="button" class="btn ghost" onclick="switchAuth()">Already have account?</button><button class="btn">Sign up →</button></div>
+    </form>
+  </div>
+  <div id="authSign2" hidden>
+    <h2>Sign in</h2>
+    <form id="signinForm">
+      <label>Email<input name="email" type="email" autocomplete="email" required></label>
+      <label>Password<input name="password" type="password" autocomplete="current-password" required></label>
+      <div class="acts"><button type="button" class="btn ghost" onclick="switchAuth()">No account yet?</button><button class="btn">Sign in →</button></div>
+    </form>
+  </div>
+</dialog>
+
 <dialog id="checkout">
   <form id="coForm">
     <h2>Checkout</h2>
-    <p class="muted small" style="margin:0">One page, no account. Your details are remembered for next time.</p>
+    <p id="coDesc" class="muted small" style="margin:0">One page, no account. Your details are remembered for next time.</p>
     <label>Full name<input name="name" autocomplete="name" required></label>
     <label>Email<input name="email" type="email" autocomplete="email" required></label>
     <label>Phone<input name="phone" type="tel" autocomplete="tel" required></label>
@@ -356,6 +381,7 @@ const money=n=>STORE.symbol+n.toLocaleString("en-IN",{minimumFractionDigits:n%1?
 const FREE_SHIP=STORE.freeShip,PROMOS=STORE.promos;
 const store={get(k,d){try{return JSON.parse(localStorage.getItem(k))??d}catch{return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch{}}};
 let cart=store.get("cart",{}),vehicle=store.get("vehicle",null),promo=store.get("promo",null),cat="All";
+let authToken=store.get("authToken",null),currentUser=null;
 const fits=p=>!vehicle||p.fits==="all"||p.fits.includes(vehicle.make);
 const col=p=>CATS[p.cat].c;
 /* Product photos: put files in /images named <id>.jpg (e.g. images/1.jpg), or set img:"https://..." on a product. Emoji shows if no photo exists. */
@@ -451,17 +477,70 @@ $("cartBtn").onclick=()=>openCart(true);
 $("closeCart").onclick=$("overlay").onclick=()=>openCart(false);
 addEventListener("keydown",e=>{if(e.key==="Escape")openCart(false)});
 
+/* auth */
+async function checkAuth(){
+  if(!authToken)return;
+  try{
+    const r=await fetch("/api/auth/me",{headers:{"Authorization":`Bearer ${authToken}`}});
+    if(r.ok){currentUser=await r.json();currentUser=currentUser.user;updateAuthUI()}
+    else{authToken=null;store.set("authToken",null);updateAuthUI()}
+  }catch(err){console.error(err)}
+}
+function updateAuthUI(){
+  if(currentUser){
+    $("signinBtn").hidden=true;$("signupBtn").hidden=true;$("userBtn").hidden=false;$("userName").textContent=currentUser.name||currentUser.email
+  }else{
+    $("signinBtn").hidden=false;$("signupBtn").hidden=false;$("userBtn").hidden=true
+  }
+}
+function openAuth(mode){
+  $("authSign").hidden=mode!=="signup";$("authSign2").hidden=mode!=="signin";$("auth").showModal()
+}
+function switchAuth(){
+  const now=$("authSign").hidden?"signin":"signup";openAuth(now==="signin"?"signup":"signin")
+}
+$("signupForm").onsubmit=async e=>{e.preventDefault();
+  const{email,password,name}=Object.fromEntries(new FormData(e.target));
+  try{
+    const r=await fetch("/api/auth/signup",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email,password,name})});
+    const d=await r.json();
+    if(!r.ok)throw new Error(d.error||"Signup failed");
+    authToken=d.token;currentUser=d.user;store.set("authToken",authToken);updateAuthUI();$("auth").close();toast("Account created!");e.target.reset()
+  }catch(err){toast(err.message)}
+};
+$("signinForm").onsubmit=async e=>{e.preventDefault();
+  const{email,password}=Object.fromEntries(new FormData(e.target));
+  try{
+    const r=await fetch("/api/auth/signin",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email,password})});
+    const d=await r.json();
+    if(!r.ok)throw new Error(d.error||"Signin failed");
+    authToken=d.token;currentUser=d.user;store.set("authToken",authToken);updateAuthUI();$("auth").close();toast("Signed in!");e.target.reset()
+  }catch(err){toast(err.message)}
+};
+
 /* checkout */
 const co=$("checkout");
-$("checkoutBtn").onclick=()=>{const s=store.get("contact",{});for(const k in s)if($("coForm").elements[k])$("coForm").elements[k].value=s[k];
-  $("coTotal").textContent=money(totals().total);co.showModal()};
+$("checkoutBtn").onclick=()=>{
+  if(currentUser){
+    $("coDesc").textContent=`Checking out as ${currentUser.name||currentUser.email}. Email: ${currentUser.email}`;
+    $("coForm").elements["name"].value=currentUser.name||"";
+    $("coForm").elements["email"].value=currentUser.email||"";
+    $("coForm").elements["phone"].value=currentUser.phone||"";
+    $("coForm").elements["addr"].value=currentUser.addr||"";
+    $("coForm").elements["city"].value=currentUser.city||"";
+    $("coForm").elements["zip"].value=currentUser.zip||""
+  }else{
+    $("coDesc").textContent="One page, no account needed. Sign in to save your details."
+  }
+  $("coTotal").textContent=money(totals().total);co.showModal()
+};
 $("coCancel").onclick=()=>co.close();
 $("coForm").onsubmit=async e=>{e.preventDefault();
-  const f=Object.fromEntries(new FormData($("coForm")));store.set("contact",f);
+  const f=Object.fromEntries(new FormData($("coForm")));
   const btn=$("payBtn");btn.disabled=true;
   try{
     if(typeof Razorpay==="undefined")throw new Error("Payment script failed to load. Check your internet connection.");
-    const r=await fetch("/api/create-order",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({cart,promo,customer:f,vehicle})});
+    const r=await fetch("/api/create-order",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({cart,promo,customer:f,vehicle,token:authToken})});
     const o=await r.json().catch(()=>({}));
     if(!r.ok)throw new Error(o.error||"Could not start payment. Is the server running?");
     const rz=new Razorpay({key:o.key,amount:o.amount,currency:o.currency,name:"Needverse",description:"Order "+o.ref,order_id:o.orderId,
@@ -486,7 +565,7 @@ $("newsForm").onsubmit=e=>{e.preventDefault();e.target.reset();toast("You're on 
 let tt;function toast(m){const t=$("toast");t.textContent=m;t.classList.add("show");clearTimeout(tt);tt=setTimeout(()=>t.classList.remove("show"),2000)}
 
 $("yr").textContent=new Date().getFullYear();
-renderGarage();renderChips();render();renderCart();
+checkAuth();updateAuthUI();renderGarage();renderChips();render();renderCart();
 </script>
 </body>
 </html>
